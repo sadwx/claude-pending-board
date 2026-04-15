@@ -1,0 +1,74 @@
+# Claude Pending Board
+
+A cross-platform tray app that surfaces every Claude Code CLI session waiting for your input — across projects, across terminals, in one floating window.
+
+## What it does
+
+Claude Code sessions stall regularly: a `permission_prompt` waits for your approval, an `idle_prompt` waits for your next instruction. If you run several Claude Code sessions in parallel terminal tabs you lose flow finding the one that's waiting.
+
+Claude Pending Board watches every session and pushes a single floating window when one of them needs you. Click an entry and it brings the exact WezTerm or iTerm2 pane that owns the session to the foreground. Answer the prompt, the window hides itself, you get back to what you were doing.
+
+## Status
+
+**Pre-alpha.** The design spec lives under `openspec/changes/add-claude-pending-board/`. Implementation has not started yet; this repository currently contains only the spec, documentation, and scaffolding.
+
+## How it works (high level)
+
+```
+Claude Code (multiple sessions)
+  └─ Notification / UserPromptSubmit / Stop hooks
+     └─ pending_hook.ps1  (Windows)
+        pending_hook.sh   (macOS / Linux)
+           └─ appends JSONL op to  ~/.claude/pending/board.jsonl
+
+   Tauri 2 app (tray icon)
+     └─ BoardWatcher → StateStore → VisibilityController → HUD window
+                                 └─ Reaper (liveness)
+                                 └─ TerminalAdapter (WezTerm / iTerm2)
+```
+
+- **Floating HUD**: 380 × 440 pixel draggable, non-activating window that auto-shows on the first pending entry and auto-hides when the board goes empty.
+- **Sorting**: permission > idle > stale, newest first within each group.
+- **Click to focus**: live entries jump to the owning terminal pane. Stale entries (e.g. after a reboot) spawn a fresh `claude --resume <session_id>` in a new tab.
+- **Dismiss with cooldown**: manually dismiss the window with a 5-second confirmation panel; configurable 15-minute cooldown; optional reminder when new items accumulate during the cooldown.
+- **Cross-platform**: one Rust codebase for Windows, macOS, and Linux. WezTerm adapter everywhere; iTerm2 adapter on macOS.
+
+See `openspec/changes/add-claude-pending-board/design.md` for the full design rationale.
+
+## Requirements
+
+- **Claude Code** installed and registered (any version with the `Notification`, `UserPromptSubmit`, and `Stop` hook events).
+- **Terminal**:
+  - WezTerm (Windows / Linux / macOS) — `wezterm` in `PATH`.
+  - iTerm2 (macOS only) — for the iTerm2 adapter.
+- **For building from source**: Rust 1.83+, the Tauri 2 prerequisites for your OS (`cargo-tauri`), and Node.js 20+ for the front-end toolchain.
+
+Windows Terminal is explicitly **not supported** as a focus target because its public API cannot activate a specific tab. You can still run Claude Code inside Windows Terminal; clicking an entry just won't focus the right tab.
+
+## Installation
+
+See [`INSTALL.md`](./INSTALL.md).
+
+## Documentation
+
+- [`INSTALL.md`](./INSTALL.md) — step-by-step install for end users
+- [`openspec/changes/add-claude-pending-board/proposal.md`](./openspec/changes/add-claude-pending-board/proposal.md) — what and why
+- [`openspec/changes/add-claude-pending-board/design.md`](./openspec/changes/add-claude-pending-board/design.md) — technical design
+- [`openspec/changes/add-claude-pending-board/specs/pending-board/spec.md`](./openspec/changes/add-claude-pending-board/specs/pending-board/spec.md) — requirements and scenarios
+- [`openspec/changes/add-claude-pending-board/tasks.md`](./openspec/changes/add-claude-pending-board/tasks.md) — implementation checklist
+- `docs/release-checklist.md` — manual UX checklist per release (once written)
+
+## Contributing
+
+This project follows [spec-driven development](https://github.com/Fission-AI/OpenSpec). Before opening a PR for a non-trivial change:
+
+1. Run `openspec new change <name>` and draft the artifacts.
+2. Update or add requirements in the relevant `specs/<capability>/spec.md`.
+3. Update `tasks.md` with a concrete implementation checklist.
+4. Open the PR with the change proposal linked.
+
+Small bug fixes and documentation improvements can skip the spec step.
+
+## License
+
+TBD — will be added before the first public release.
