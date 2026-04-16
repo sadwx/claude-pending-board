@@ -1,9 +1,9 @@
 use crate::state::SharedState;
+use chrono::Duration;
 use claude_pending_board_core::board::compaction;
 use claude_pending_board_core::board::watcher::BoardWatcher;
 use claude_pending_board_core::reaper::{self, RealProcessTable, RealSessionFiles};
 use claude_pending_board_core::visibility::{VisibilityAction, VisibilityEvent};
-use chrono::Duration;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
@@ -71,9 +71,13 @@ async fn process_ops(
         let entries = s.entries();
 
         let action = if count_after > count_before {
-            s.visibility.handle(VisibilityEvent::EntryAdded { board_count: count_after })
+            s.visibility.handle(VisibilityEvent::EntryAdded {
+                board_count: count_after,
+            })
         } else if count_after < count_before {
-            s.visibility.handle(VisibilityEvent::EntryRemoved { board_count: count_after })
+            s.visibility.handle(VisibilityEvent::EntryRemoved {
+                board_count: count_after,
+            })
         } else {
             VisibilityAction::None
         };

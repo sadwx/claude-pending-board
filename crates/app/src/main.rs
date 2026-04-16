@@ -19,7 +19,7 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .manage(shared_state.clone())
         .setup(move |app| {
-            services::boot(&app.handle(), shared_state.clone());
+            services::boot(app.handle(), shared_state.clone());
             tray::setup(app)?;
 
             // Create HUD window (hidden initially)
@@ -28,14 +28,14 @@ fn main() {
                 "hud",
                 tauri::WebviewUrl::App("index.html".into()),
             )
-                .title("Claude Pending Board")
-                .inner_size(380.0, 440.0)
-                .resizable(false)
-                .decorations(false)
-                .always_on_top(true)
-                .visible(false)
-                .skip_taskbar(true)
-                .build()?;
+            .title("Claude Pending Board")
+            .inner_size(380.0, 440.0)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .visible(false)
+            .skip_taskbar(true)
+            .build()?;
 
             tracing::info!("Claude Pending Board started");
             Ok(())

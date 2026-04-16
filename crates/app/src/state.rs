@@ -33,6 +33,7 @@ impl AppState {
         self.store.snapshot()
     }
 
+    #[allow(dead_code)]
     pub fn entry_count(&self) -> usize {
         self.store.len()
     }
