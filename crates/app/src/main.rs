@@ -19,14 +19,14 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .manage(shared_state.clone())
         .setup(move |app| {
-            services::boot(app.handle(), shared_state.clone());
-            tray::setup(app)?;
-
-            // Create HUD window (hidden initially)
+            // Build the HUD window before booting services so the async op pipeline
+            // can always find it via get_webview_window("hud"). Without this, ops
+            // loaded from a non-empty board.jsonl at startup can race the window
+            // creation and silently drop the ShowHud action.
             let _hud_window = tauri::WebviewWindowBuilder::new(
                 app,
                 "hud",
-                tauri::WebviewUrl::App("index.html".into()),
+                tauri::WebviewUrl::App("hud/index.html".into()),
             )
             .title("Claude Pending Board")
             .inner_size(380.0, 440.0)
@@ -37,6 +37,9 @@ fn main() {
             .skip_taskbar(true)
             .build()?;
 
+            services::boot(app.handle(), shared_state.clone());
+            tray::setup(app)?;
+
             tracing::info!("Claude Pending Board started");
             Ok(())
         })
@@ -45,6 +48,7 @@ fn main() {
             commands::focus_entry,
             commands::dismiss_hud,
             commands::manual_open,
+            commands::open_settings,
             commands::get_config,
             commands::apply_config,
         ])

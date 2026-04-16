@@ -41,7 +41,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     let _ = tauri::WebviewWindowBuilder::new(
                         app,
                         "settings",
-                        tauri::WebviewUrl::App("../settings/index.html".into()),
+                        tauri::WebviewUrl::App("settings/index.html".into()),
                     )
                     .title("Settings - Claude Pending Board")
                     .inner_size(480.0, 500.0)

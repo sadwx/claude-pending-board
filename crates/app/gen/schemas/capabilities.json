@@ -1,1 +1,1 @@
-{}
+{"default":{"identifier":"default","description":"Default capability for HUD and Settings windows","local":true,"windows":["hud","settings"],"permissions":["core:default"]}}

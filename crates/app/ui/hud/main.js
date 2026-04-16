@@ -186,8 +186,12 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
-settingsBtn.addEventListener("click", function() {
-  console.log("settings clicked");
+settingsBtn.addEventListener("click", async function() {
+  try {
+    await invoke("open_settings");
+  } catch (e) {
+    console.error("open_settings error:", e);
+  }
 });
 
 listen("entries-updated", function(event) {

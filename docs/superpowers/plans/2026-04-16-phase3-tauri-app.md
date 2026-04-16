@@ -1639,3 +1639,19 @@ git tag v0.0.3-app
 2. **Placeholder scan:** No TBD/TODO found except the settings button comment in main.js which is addressed by Task 6.
 
 3. **Type consistency:** `Entry`, `Config`, `VisibilityEvent`, `VisibilityAction` — all match core crate definitions. Command names match between `generate_handler!` and JS `invoke()` calls.
+
+---
+
+## Smoke Test Results (2026-04-17)
+
+Ran `scripts/smoke-test.ps1` against the built app. Initial run failed step 1 (HUD did not list the entry). Four root causes fixed:
+
+1. **No Tauri 2 capability file.** Tauri 2 blocks all IPC for webviews that don't match a capability, so `invoke()` and `listen()` in the HUD silently failed — the HUD rendered but never received entries. Added `crates/app/capabilities/default.json` granting `core:default` to the `hud` and `settings` windows.
+
+2. **Startup race between watcher and HUD window.** `services::boot()` was called before the HUD window was built. When `board.jsonl` already contained entries at startup, the watcher's synchronous initial read pushed ops into the channel, and the spawned `process_ops` could try `window.show()` before the window existed — `get_webview_window("hud")` returned `None` and the show action was silently dropped. Reordered `main.rs::setup` to build the HUD window *before* booting services.
+
+3. **Settings window loaded the HUD UI.** `tray.rs` used `WebviewUrl::App("../settings/index.html")`, but Tauri's asset resolver disallows `..` escaping the `frontendDist` root. Restructured: `frontendDist` is now `ui` (not `ui/hud`), HUD URL is `hud/index.html`, Settings URL is `settings/index.html`.
+
+4. **HUD gear button was a stub.** The settings button handler in `ui/hud/main.js` only called `console.log`. Added a new `open_settings` Tauri command that gets-or-creates the settings window, registered it in `invoke_handler`, and wired the gear button to call it.
+
+Post-fix verification (fresh start, empty board, step 1 written): HUD becomes visible at default position with Catppuccin-dark theme, `PERMISSION` section showing the lock-icon entry with project name, message, and `now` timestamp. No startup ordering issues across restarts with persisted entries.

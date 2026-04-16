@@ -101,6 +101,27 @@ pub fn manual_open(app: AppHandle, state: State<SharedState>) -> Result<(), Stri
 }
 
 #[tauri::command]
+pub fn open_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("settings/index.html".into()),
+    )
+    .title("Settings - Claude Pending Board")
+    .inner_size(480.0, 500.0)
+    .resizable(true)
+    .build()
+    .map_err(|e| format!("failed to create settings window: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_config(state: State<SharedState>) -> Config {
     let s = state.lock().unwrap();
     s.config.clone()

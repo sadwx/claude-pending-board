@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "identifier": "com.claude-pending-board.app",
   "build": {
-    "frontendDist": "ui/hud"
+    "frontendDist": "ui"
   },
   "app": {
     "withGlobalTauri": true,
