@@ -16,7 +16,9 @@ pub enum ParseError {
 pub fn parse_line(line: &str) -> Result<Op, ParseError> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
-        return Err(ParseError::InvalidJson(serde_json::from_str::<Op>("").unwrap_err()));
+        return Err(ParseError::InvalidJson(
+            serde_json::from_str::<Op>("").unwrap_err(),
+        ));
     }
 
     match serde_json::from_str::<Op>(trimmed) {
@@ -75,7 +77,12 @@ mod tests {
         let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"abc-123","cwd":"/home/user/project","claude_pid":1234,"terminal_pid":5678,"transcript_path":"/tmp/transcript.jsonl","notification_type":"permission_prompt","message":"May I run ls?"}"#;
         let op = parse_line(line).unwrap();
         match op {
-            Op::Add { session_id, notification_type, claude_pid, .. } => {
+            Op::Add {
+                session_id,
+                notification_type,
+                claude_pid,
+                ..
+            } => {
                 assert_eq!(session_id, "abc-123");
                 assert_eq!(notification_type, NotificationType::PermissionPrompt);
                 assert_eq!(claude_pid, 1234);
@@ -89,7 +96,9 @@ mod tests {
         let line = r#"{"op":"clear","ts":"2026-04-16T10:01:00Z","session_id":"abc-123","reason":"user_replied"}"#;
         let op = parse_line(line).unwrap();
         match op {
-            Op::Clear { session_id, reason, .. } => {
+            Op::Clear {
+                session_id, reason, ..
+            } => {
                 assert_eq!(session_id, "abc-123");
                 assert_eq!(reason, "user_replied");
             }
@@ -102,7 +111,9 @@ mod tests {
         let line = r#"{"op":"stale","ts":"2026-04-16T10:02:00Z","session_id":"abc-123","reason":"pid_dead"}"#;
         let op = parse_line(line).unwrap();
         match op {
-            Op::Stale { session_id, reason, .. } => {
+            Op::Stale {
+                session_id, reason, ..
+            } => {
                 assert_eq!(session_id, "abc-123");
                 assert_eq!(reason, "pid_dead");
             }
@@ -115,7 +126,11 @@ mod tests {
         let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"def-456","cwd":"/tmp","claude_pid":999,"terminal_pid":null,"transcript_path":"/tmp/t.jsonl","notification_type":"idle_prompt","message":"Waiting"}"#;
         let op = parse_line(line).unwrap();
         match op {
-            Op::Add { notification_type, terminal_pid, .. } => {
+            Op::Add {
+                notification_type,
+                terminal_pid,
+                ..
+            } => {
                 assert_eq!(notification_type, NotificationType::IdlePrompt);
                 assert!(terminal_pid.is_none());
             }

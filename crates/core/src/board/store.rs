@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::types::{Entry, EntryState, Op, SessionId};
+use std::collections::HashMap;
 
 /// The in-memory state reconstructed by replaying ops.
 #[derive(Debug, Default)]
@@ -16,21 +16,30 @@ impl StateStore {
     pub fn apply(&mut self, op: Op) -> bool {
         match op {
             Op::Add {
-                ts, session_id, cwd, claude_pid, terminal_pid,
-                transcript_path, notification_type, message,
+                ts,
+                session_id,
+                cwd,
+                claude_pid,
+                terminal_pid,
+                transcript_path,
+                notification_type,
+                message,
             } => {
-                self.entries.insert(session_id.clone(), Entry {
-                    session_id,
-                    ts,
-                    cwd,
-                    claude_pid,
-                    terminal_pid,
-                    transcript_path,
-                    notification_type,
-                    message,
-                    state: EntryState::Live,
-                    stale_since: None,
-                });
+                self.entries.insert(
+                    session_id.clone(),
+                    Entry {
+                        session_id,
+                        ts,
+                        cwd,
+                        claude_pid,
+                        terminal_pid,
+                        transcript_path,
+                        notification_type,
+                        message,
+                        state: EntryState::Live,
+                        stale_since: None,
+                    },
+                );
                 true
             }
             Op::Clear { session_id, .. } => {
@@ -160,7 +169,11 @@ mod tests {
     #[test]
     fn test_apply_add_creates_entry() {
         let mut store = StateStore::new();
-        let changed = store.apply(make_add("s1", NotificationType::PermissionPrompt, "2026-04-16T10:00:00Z"));
+        let changed = store.apply(make_add(
+            "s1",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:00:00Z",
+        ));
         assert!(changed);
         assert_eq!(store.len(), 1);
         let entry = store.get("s1").unwrap();
@@ -171,16 +184,31 @@ mod tests {
     #[test]
     fn test_apply_add_overwrites_same_session() {
         let mut store = StateStore::new();
-        store.apply(make_add("s1", NotificationType::PermissionPrompt, "2026-04-16T10:00:00Z"));
-        store.apply(make_add("s1", NotificationType::IdlePrompt, "2026-04-16T10:01:00Z"));
+        store.apply(make_add(
+            "s1",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:00:00Z",
+        ));
+        store.apply(make_add(
+            "s1",
+            NotificationType::IdlePrompt,
+            "2026-04-16T10:01:00Z",
+        ));
         assert_eq!(store.len(), 1);
-        assert_eq!(store.get("s1").unwrap().notification_type, NotificationType::IdlePrompt);
+        assert_eq!(
+            store.get("s1").unwrap().notification_type,
+            NotificationType::IdlePrompt
+        );
     }
 
     #[test]
     fn test_apply_clear_removes_entry() {
         let mut store = StateStore::new();
-        store.apply(make_add("s1", NotificationType::PermissionPrompt, "2026-04-16T10:00:00Z"));
+        store.apply(make_add(
+            "s1",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:00:00Z",
+        ));
         let changed = store.apply(make_clear("s1", "2026-04-16T10:01:00Z"));
         assert!(changed);
         assert_eq!(store.len(), 0);
@@ -197,7 +225,11 @@ mod tests {
     #[test]
     fn test_apply_stale_promotes_entry() {
         let mut store = StateStore::new();
-        store.apply(make_add("s1", NotificationType::PermissionPrompt, "2026-04-16T10:00:00Z"));
+        store.apply(make_add(
+            "s1",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:00:00Z",
+        ));
         let changed = store.apply(make_stale("s1", "2026-04-16T10:05:00Z"));
         assert!(changed);
         assert_eq!(store.len(), 1);
@@ -216,24 +248,59 @@ mod tests {
     #[test]
     fn test_snapshot_sort_order() {
         let mut store = StateStore::new();
-        store.apply(make_add("idle-old", NotificationType::IdlePrompt, "2026-04-16T10:00:00Z"));
-        store.apply(make_add("perm-old", NotificationType::PermissionPrompt, "2026-04-16T10:01:00Z"));
-        store.apply(make_add("idle-new", NotificationType::IdlePrompt, "2026-04-16T10:02:00Z"));
-        store.apply(make_add("perm-new", NotificationType::PermissionPrompt, "2026-04-16T10:03:00Z"));
-        store.apply(make_add("stale-one", NotificationType::PermissionPrompt, "2026-04-16T09:00:00Z"));
+        store.apply(make_add(
+            "idle-old",
+            NotificationType::IdlePrompt,
+            "2026-04-16T10:00:00Z",
+        ));
+        store.apply(make_add(
+            "perm-old",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:01:00Z",
+        ));
+        store.apply(make_add(
+            "idle-new",
+            NotificationType::IdlePrompt,
+            "2026-04-16T10:02:00Z",
+        ));
+        store.apply(make_add(
+            "perm-new",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:03:00Z",
+        ));
+        store.apply(make_add(
+            "stale-one",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T09:00:00Z",
+        ));
         store.apply(make_stale("stale-one", "2026-04-16T10:04:00Z"));
 
         let snap = store.snapshot();
         let ids: Vec<&str> = snap.iter().map(|e| e.session_id.as_str()).collect();
-        assert_eq!(ids, vec!["perm-new", "perm-old", "idle-new", "idle-old", "stale-one"]);
+        assert_eq!(
+            ids,
+            vec!["perm-new", "perm-old", "idle-new", "idle-old", "stale-one"]
+        );
     }
 
     #[test]
     fn test_remove_where() {
         let mut store = StateStore::new();
-        store.apply(make_add("s1", NotificationType::PermissionPrompt, "2026-04-16T10:00:00Z"));
-        store.apply(make_add("s2", NotificationType::IdlePrompt, "2026-04-16T10:01:00Z"));
-        store.apply(make_add("s3", NotificationType::PermissionPrompt, "2026-04-16T10:02:00Z"));
+        store.apply(make_add(
+            "s1",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:00:00Z",
+        ));
+        store.apply(make_add(
+            "s2",
+            NotificationType::IdlePrompt,
+            "2026-04-16T10:01:00Z",
+        ));
+        store.apply(make_add(
+            "s3",
+            NotificationType::PermissionPrompt,
+            "2026-04-16T10:02:00Z",
+        ));
         let removed = store.remove_where(|e| e.notification_type == NotificationType::IdlePrompt);
         assert_eq!(removed.len(), 1);
         assert_eq!(removed[0].session_id, "s2");

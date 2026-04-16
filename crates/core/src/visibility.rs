@@ -80,31 +80,44 @@ impl VisibilityController {
             // --- Hidden state ---
             (VisibilityState::Hidden, VisibilityEvent::EntryAdded { board_count }) => {
                 if board_count > 0 {
-                    self.state = VisibilityState::Shown { grace_deadline: None };
+                    self.state = VisibilityState::Shown {
+                        grace_deadline: None,
+                    };
                     VisibilityAction::ShowHud
                 } else {
                     VisibilityAction::None
                 }
             }
             (VisibilityState::Hidden, VisibilityEvent::ManualOpen) => {
-                self.state = VisibilityState::Shown { grace_deadline: None };
+                self.state = VisibilityState::Shown {
+                    grace_deadline: None,
+                };
                 VisibilityAction::ShowHud
             }
             (VisibilityState::Hidden, _) => VisibilityAction::None,
 
             // --- Shown state ---
-            (VisibilityState::Shown { grace_deadline }, VisibilityEvent::EntryAdded { board_count }) => {
+            (
+                VisibilityState::Shown { grace_deadline },
+                VisibilityEvent::EntryAdded { board_count },
+            ) => {
                 *grace_deadline = None;
                 VisibilityAction::UpdateBadge { count: board_count }
             }
-            (VisibilityState::Shown { grace_deadline }, VisibilityEvent::EntryRemoved { board_count }) => {
+            (
+                VisibilityState::Shown { grace_deadline },
+                VisibilityEvent::EntryRemoved { board_count },
+            ) => {
                 if board_count == 0 {
                     let deadline = now + Duration::seconds(self.config.auto_hide_grace_secs as i64);
                     *grace_deadline = Some(deadline);
                 }
                 VisibilityAction::UpdateBadge { count: board_count }
             }
-            (VisibilityState::Shown { .. }, VisibilityEvent::ManualDismiss { reminding_override }) => {
+            (
+                VisibilityState::Shown { .. },
+                VisibilityEvent::ManualDismiss { reminding_override },
+            ) => {
                 let until = now + Duration::minutes(self.config.cooldown_minutes as i64);
                 self.state = VisibilityState::CooldownHidden {
                     until,
@@ -122,28 +135,40 @@ impl VisibilityController {
                 }
                 VisibilityAction::None
             }
-            (VisibilityState::Shown { .. }, VisibilityEvent::ManualOpen) => {
-                VisibilityAction::None
-            }
+            (VisibilityState::Shown { .. }, VisibilityEvent::ManualOpen) => VisibilityAction::None,
 
             // --- CooldownHidden state ---
-            (VisibilityState::CooldownHidden { seen_add, .. }, VisibilityEvent::EntryAdded { board_count }) => {
+            (
+                VisibilityState::CooldownHidden { seen_add, .. },
+                VisibilityEvent::EntryAdded { board_count },
+            ) => {
                 *seen_add = true;
                 VisibilityAction::UpdateBadge { count: board_count }
             }
-            (VisibilityState::CooldownHidden { .. }, VisibilityEvent::EntryRemoved { board_count }) => {
-                VisibilityAction::UpdateBadge { count: board_count }
-            }
+            (
+                VisibilityState::CooldownHidden { .. },
+                VisibilityEvent::EntryRemoved { board_count },
+            ) => VisibilityAction::UpdateBadge { count: board_count },
             (VisibilityState::CooldownHidden { .. }, VisibilityEvent::ManualOpen) => {
-                self.state = VisibilityState::Shown { grace_deadline: None };
+                self.state = VisibilityState::Shown {
+                    grace_deadline: None,
+                };
                 VisibilityAction::ShowHud
             }
-            (VisibilityState::CooldownHidden { until, seen_add, reminding_override }, VisibilityEvent::Tick) => {
+            (
+                VisibilityState::CooldownHidden {
+                    until,
+                    seen_add,
+                    reminding_override,
+                },
+                VisibilityEvent::Tick,
+            ) => {
                 if now >= *until {
-                    let should_remind = reminding_override
-                        .unwrap_or(self.config.reminding_enabled);
+                    let should_remind = reminding_override.unwrap_or(self.config.reminding_enabled);
                     if should_remind && *seen_add {
-                        self.state = VisibilityState::Shown { grace_deadline: None };
+                        self.state = VisibilityState::Shown {
+                            grace_deadline: None,
+                        };
                         VisibilityAction::ShowHud
                     } else {
                         self.state = VisibilityState::Hidden;
@@ -171,7 +196,9 @@ mod tests {
 
     impl FakeClock {
         fn new(now: DateTime<Utc>) -> Arc<Self> {
-            Arc::new(Self { now: Mutex::new(now) })
+            Arc::new(Self {
+                now: Mutex::new(now),
+            })
         }
 
         fn advance(&self, duration: Duration) {
@@ -219,7 +246,12 @@ mod tests {
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
         let action = ctrl.handle(VisibilityEvent::EntryRemoved { board_count: 0 });
         assert_eq!(action, VisibilityAction::UpdateBadge { count: 0 });
-        assert!(matches!(ctrl.state(), VisibilityState::Shown { grace_deadline: Some(_) }));
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: Some(_)
+            }
+        ));
     }
 
     #[test]
@@ -242,7 +274,12 @@ mod tests {
         ctrl.handle(VisibilityEvent::EntryRemoved { board_count: 0 });
         let action = ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
         assert_eq!(action, VisibilityAction::UpdateBadge { count: 1 });
-        assert!(matches!(ctrl.state(), VisibilityState::Shown { grace_deadline: None }));
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: None
+            }
+        ));
     }
 
     #[test]
@@ -250,9 +287,14 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock, default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        let action = ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        let action = ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         assert_eq!(action, VisibilityAction::HideHud);
-        assert!(matches!(ctrl.state(), VisibilityState::CooldownHidden { .. }));
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::CooldownHidden { .. }
+        ));
     }
 
     #[test]
@@ -260,7 +302,9 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock, default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         let action = ctrl.handle(VisibilityEvent::EntryAdded { board_count: 2 });
         assert_eq!(action, VisibilityAction::UpdateBadge { count: 2 });
         match ctrl.state() {
@@ -274,7 +318,9 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock.clone(), default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 2 });
         clock.advance(Duration::minutes(16));
         let action = ctrl.handle(VisibilityEvent::Tick);
@@ -286,7 +332,9 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock.clone(), default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         clock.advance(Duration::minutes(16));
         let action = ctrl.handle(VisibilityEvent::Tick);
         assert_eq!(action, VisibilityAction::HideHud);
@@ -300,7 +348,9 @@ mod tests {
         config.reminding_enabled = false;
         let mut ctrl = VisibilityController::new(clock.clone(), config);
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 2 });
         clock.advance(Duration::minutes(16));
         let action = ctrl.handle(VisibilityEvent::Tick);
@@ -315,7 +365,9 @@ mod tests {
         config.reminding_enabled = false;
         let mut ctrl = VisibilityController::new(clock.clone(), config);
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: Some(true) });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: Some(true),
+        });
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 2 });
         clock.advance(Duration::minutes(16));
         let action = ctrl.handle(VisibilityEvent::Tick);
@@ -327,7 +379,9 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock.clone(), default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: Some(false) });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: Some(false),
+        });
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 2 });
         clock.advance(Duration::minutes(16));
         let action = ctrl.handle(VisibilityEvent::Tick);
@@ -340,7 +394,9 @@ mod tests {
         let clock = FakeClock::new(t0());
         let mut ctrl = VisibilityController::new(clock, default_config());
         ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
-        ctrl.handle(VisibilityEvent::ManualDismiss { reminding_override: None });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
         let action = ctrl.handle(VisibilityEvent::ManualOpen);
         assert_eq!(action, VisibilityAction::ShowHud);
         assert!(matches!(ctrl.state(), VisibilityState::Shown { .. }));

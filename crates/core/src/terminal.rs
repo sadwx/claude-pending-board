@@ -21,11 +21,7 @@ pub trait TerminalAdapter: Send + Sync {
     fn focus_pane(&self, terminal_match: &TerminalMatch) -> Result<(), AdapterError>;
 
     /// Spawn a new terminal tab running `claude --resume <session_id>` in `cwd`.
-    fn spawn_resume(
-        &self,
-        cwd: &Path,
-        session_id: &str,
-    ) -> Result<(), AdapterError>;
+    fn spawn_resume(&self, cwd: &Path, session_id: &str) -> Result<(), AdapterError>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -45,7 +41,7 @@ pub enum AdapterError {
 ///
 /// `depth_cap` limits how far up we walk (default 20) to prevent infinite loops.
 pub fn ancestor_walk(start_pid: u32, depth_cap: usize) -> Option<(String, u32)> {
-    use sysinfo::{Pid, System, ProcessRefreshKind, ProcessesToUpdate};
+    use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
     let mut sys = System::new();
     sys.refresh_processes_specifics(
@@ -69,7 +65,10 @@ pub fn ancestor_walk(start_pid: u32, depth_cap: usize) -> Option<(String, u32)> 
         // Strip .exe suffix on Windows for matching
         let name_normalized = name.strip_suffix(".exe").unwrap_or(&name);
 
-        if KNOWN_TERMINALS.iter().any(|t| t.eq_ignore_ascii_case(name_normalized)) {
+        if KNOWN_TERMINALS
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(name_normalized))
+        {
             return Some((name, current_pid.as_u32()));
         }
 

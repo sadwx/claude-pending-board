@@ -41,7 +41,10 @@ pub enum CompactionError {
 /// Compact the board file: read all ops, replay into a store, write back only
 /// the current entries as `add` ops (dropping cleared and expired-stale entries).
 /// Uses atomic write-to-tmp + rename.
-pub fn compact(file_path: &Path, stale_expiry: Duration) -> Result<CompactionResult, CompactionError> {
+pub fn compact(
+    file_path: &Path,
+    stale_expiry: Duration,
+) -> Result<CompactionResult, CompactionError> {
     let content = match std::fs::read_to_string(file_path) {
         Ok(c) => c,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -128,8 +131,8 @@ pub fn compact(file_path: &Path, stale_expiry: Duration) -> Result<CompactionRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn add_line(session_id: &str, ts: &str) -> String {
         format!(
@@ -160,7 +163,9 @@ mod tests {
             add_line("s1", "2026-04-16T10:00:00Z"),
             add_line("s2", "2026-04-16T10:01:00Z"),
             clear_line("s1", "2026-04-16T10:02:00Z"),
-        ].join("\n") + "\n";
+        ]
+        .join("\n")
+            + "\n";
         fs::write(&path, &content).unwrap();
 
         let result = compact(&path, Duration::hours(24)).unwrap();
@@ -182,7 +187,9 @@ mod tests {
             add_line("old-stale", &old_ts),
             stale_line("old-stale", &stale_ts),
             add_line("fresh", "2026-04-16T10:00:00Z"),
-        ].join("\n") + "\n";
+        ]
+        .join("\n")
+            + "\n";
         fs::write(&path, &content).unwrap();
 
         let result = compact(&path, Duration::hours(24)).unwrap();
@@ -202,7 +209,9 @@ mod tests {
         let content = [
             add_line("recent-stale", &recent_ts),
             stale_line("recent-stale", &stale_ts),
-        ].join("\n") + "\n";
+        ]
+        .join("\n")
+            + "\n";
         fs::write(&path, &content).unwrap();
 
         let result = compact(&path, Duration::hours(24)).unwrap();
@@ -216,7 +225,9 @@ mod tests {
         let content = [
             add_line("s1", "2026-04-16T10:00:00Z"),
             add_line("s2", "2026-04-16T10:01:00Z"),
-        ].join("\n") + "\n";
+        ]
+        .join("\n")
+            + "\n";
         fs::write(&path, &content).unwrap();
 
         compact(&path, Duration::hours(24)).unwrap();
@@ -246,7 +257,9 @@ mod tests {
             add_line("s1", "2026-04-16T10:00:00Z"),
             "garbage line".to_string(),
             add_line("s2", "2026-04-16T10:01:00Z"),
-        ].join("\n") + "\n";
+        ]
+        .join("\n")
+            + "\n";
         fs::write(&path, &content).unwrap();
 
         let result = compact(&path, Duration::hours(24)).unwrap();

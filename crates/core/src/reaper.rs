@@ -177,42 +177,62 @@ mod tests {
     #[test]
     fn test_alive_process_with_matching_session() {
         let entry = make_entry("session-abc", 1000);
-        let proc_table = MockProcessTable { alive_pids: vec![1000] };
+        let proc_table = MockProcessTable {
+            alive_pids: vec![1000],
+        };
         let session_files = MockSessionFiles {
             sessions: HashMap::from([(1000, "session-abc".to_string())]),
         };
-        assert_eq!(check_liveness(&entry, &proc_table, &session_files), LivenessResult::Alive);
+        assert_eq!(
+            check_liveness(&entry, &proc_table, &session_files),
+            LivenessResult::Alive
+        );
     }
 
     #[test]
     fn test_dead_process() {
         let entry = make_entry("session-abc", 1000);
         let proc_table = MockProcessTable { alive_pids: vec![] };
-        let session_files = MockSessionFiles { sessions: HashMap::new() };
-        assert_eq!(check_liveness(&entry, &proc_table, &session_files), LivenessResult::Dead);
+        let session_files = MockSessionFiles {
+            sessions: HashMap::new(),
+        };
+        assert_eq!(
+            check_liveness(&entry, &proc_table, &session_files),
+            LivenessResult::Dead
+        );
     }
 
     #[test]
     fn test_pid_recycled_session_file_missing() {
         let entry = make_entry("session-abc", 1000);
-        let proc_table = MockProcessTable { alive_pids: vec![1000] };
-        let session_files = MockSessionFiles { sessions: HashMap::new() };
+        let proc_table = MockProcessTable {
+            alive_pids: vec![1000],
+        };
+        let session_files = MockSessionFiles {
+            sessions: HashMap::new(),
+        };
         assert_eq!(
             check_liveness(&entry, &proc_table, &session_files),
-            LivenessResult::Mismatched { reason: "session_file_missing".to_string() }
+            LivenessResult::Mismatched {
+                reason: "session_file_missing".to_string()
+            }
         );
     }
 
     #[test]
     fn test_pid_recycled_session_mismatch() {
         let entry = make_entry("session-abc", 1000);
-        let proc_table = MockProcessTable { alive_pids: vec![1000] };
+        let proc_table = MockProcessTable {
+            alive_pids: vec![1000],
+        };
         let session_files = MockSessionFiles {
             sessions: HashMap::from([(1000, "different-session".to_string())]),
         };
         assert_eq!(
             check_liveness(&entry, &proc_table, &session_files),
-            LivenessResult::Mismatched { reason: "mismatch".to_string() }
+            LivenessResult::Mismatched {
+                reason: "mismatch".to_string()
+            }
         );
     }
 
@@ -223,7 +243,9 @@ mod tests {
             make_entry("dead", 2000),
             make_entry("recycled", 3000),
         ];
-        let proc_table = MockProcessTable { alive_pids: vec![1000, 3000] };
+        let proc_table = MockProcessTable {
+            alive_pids: vec![1000, 3000],
+        };
         let session_files = MockSessionFiles {
             sessions: HashMap::from([
                 (1000, "alive".to_string()),
@@ -246,7 +268,9 @@ mod tests {
         entry.stale_since = Some(Utc::now());
 
         let proc_table = MockProcessTable { alive_pids: vec![] };
-        let session_files = MockSessionFiles { sessions: HashMap::new() };
+        let session_files = MockSessionFiles {
+            sessions: HashMap::new(),
+        };
 
         let ops = sweep(&[entry], &proc_table, &session_files);
         assert!(ops.is_empty());

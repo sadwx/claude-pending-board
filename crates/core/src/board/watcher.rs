@@ -1,5 +1,5 @@
 use crate::types::Op;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Event, EventKind};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::io::{BufRead, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -140,9 +140,9 @@ impl BoardWatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
     use std::time::Duration as StdDuration;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_watcher_reads_existing_content() {
