@@ -1,1 +1,22 @@
+# Worktrees
 .worktrees/
+
+# Rust
+/target/
+**/target/
+**/*.rs.bk
+Cargo.lock
+
+# Tauri (Phase 3)
+crates/app/src-tauri/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
