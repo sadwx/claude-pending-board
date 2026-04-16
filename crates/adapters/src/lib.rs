@@ -1,6 +1,6 @@
-pub mod wezterm;
 #[cfg(target_os = "macos")]
 pub mod iterm2;
+pub mod wezterm;
 
 use claude_pending_board_core::terminal::TerminalAdapter;
 

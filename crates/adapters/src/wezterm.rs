@@ -98,10 +98,7 @@ impl WezTermAdapter {
         Ok(())
     }
 
-    fn find_pane_for_pid(
-        claude_pid: u32,
-        panes: &[WezTermPane],
-    ) -> Option<(u64, TerminalMatch)> {
+    fn find_pane_for_pid(claude_pid: u32, panes: &[WezTermPane]) -> Option<(u64, TerminalMatch)> {
         let (terminal_name, terminal_pid) =
             claude_pending_board_core::terminal::ancestor_walk(claude_pid, 20)?;
 
