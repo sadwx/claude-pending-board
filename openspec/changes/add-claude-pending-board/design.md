@@ -9,8 +9,7 @@ The starting point is rich enough to build on without inventing anything new:
 - Claude Code's hooks framework fires `Notification` events with `session_id`, `cwd`, `transcript_path`, `hook_event_name`, `message`, and a `notification_type` of either `permission_prompt` or `idle_prompt`. A `UserPromptSubmit` event fires when the user answers and a `Stop` event fires when a turn ends.
 - Claude Code writes `~/.claude/sessions/<PID>.json` for every live CLI session, containing `pid`, `sessionId`, `cwd`, and `entrypoint`. This makes reliable liveness detection possible with zero extra plumbing.
 - WezTerm ships a first-class `wezterm cli list` / `activate-pane` / `spawn` protocol that cross-platform Rust code can shell out to. iTerm2 exposes an AppleScript surface rich enough to do the equivalent.
-- The user's target terminal set is WezTerm (Windows / Linux) and iTerm2 (macOS); Windows Terminal is explicitly out of scope because it cannot programmatically focus a specific tab.
-- The user is Simon Lin, working primarily in a PowerShell 7 environment on Windows 11 with Claude Code remote-control sessions enabled. Rust is a hard requirement for every piece of the stack the user writes.
+- The target terminal set is WezTerm (Windows / Linux) and iTerm2 (macOS); Windows Terminal is explicitly out of scope because it cannot programmatically focus a specific tab.
 
 ## Goals / Non-Goals
 
