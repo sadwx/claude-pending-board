@@ -1,4 +1,6 @@
 pub mod wezterm;
+#[cfg(target_os = "macos")]
+pub mod iterm2;
 
 use claude_pending_board_core::terminal::TerminalAdapter;
 
@@ -9,8 +11,11 @@ pub struct AdapterRegistry {
 
 impl AdapterRegistry {
     pub fn new() -> Self {
-        let adapters: Vec<Box<dyn TerminalAdapter>> =
+        #[allow(unused_mut)]
+        let mut adapters: Vec<Box<dyn TerminalAdapter>> =
             vec![Box::new(wezterm::WezTermAdapter::new())];
+        #[cfg(target_os = "macos")]
+        adapters.push(Box::new(iterm2::ITerm2Adapter::new()));
         Self { adapters }
     }
 
