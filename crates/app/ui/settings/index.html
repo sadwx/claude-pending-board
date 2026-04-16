@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Claude Pending Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Settings</h1>
+
+  <div class="setting-group">
+    <label>Cooldown after dismiss (minutes)</label>
+    <input type="range" id="cooldownMinutes" min="1" max="120" value="15">
+    <span class="range-value" id="cooldownValue">15</span>
+  </div>
+
+  <div class="setting-group">
+    <label>Reminding enabled</label>
+    <input type="checkbox" id="remindingEnabled" checked>
+  </div>
+
+  <div class="setting-group">
+    <label>Auto-hide grace delay (seconds)</label>
+    <input type="range" id="autoHideGrace" min="0" max="10" value="2">
+    <span class="range-value" id="graceValue">2</span>
+  </div>
+
+  <div class="setting-group">
+    <label>Dismiss countdown (seconds)</label>
+    <input type="range" id="dismissCountdown" min="2" max="10" value="5">
+    <span class="range-value" id="countdownValue">5</span>
+  </div>
+
+  <div class="setting-group">
+    <label>Skip dismiss confirmation</label>
+    <input type="checkbox" id="skipConfirmation">
+  </div>
+
+  <div class="setting-group">
+    <label>Default terminal adapter</label>
+    <select id="defaultAdapter">
+      <option value="wezterm">WezTerm</option>
+      <option value="iterm2">iTerm2</option>
+    </select>
+  </div>
+
+  <div class="setting-group">
+    <label>Debug logging</label>
+    <input type="checkbox" id="debugLogging">
+  </div>
+
+  <div class="actions">
+    <button id="saveBtn">Save</button>
+    <button id="resetPositionBtn">Reset HUD Position</button>
+  </div>
+
+  <div class="status" id="statusMsg"></div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

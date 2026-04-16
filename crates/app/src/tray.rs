@@ -34,7 +34,20 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             "settings" => {
-                tracing::info!("settings requested (window will be added later)");
+                if let Some(window) = app.get_webview_window("settings") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                } else {
+                    let _ = tauri::WebviewWindowBuilder::new(
+                        app,
+                        "settings",
+                        tauri::WebviewUrl::App("../settings/index.html".into()),
+                    )
+                    .title("Settings - Claude Pending Board")
+                    .inner_size(480.0, 500.0)
+                    .resizable(true)
+                    .build();
+                }
             }
             "quit" => {
                 app.exit(0);
