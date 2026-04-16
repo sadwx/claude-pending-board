@@ -7,6 +7,8 @@ license.workspace = true
 [dependencies]
 claude-pending-board-core = { path = "../core" }
 serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 sysinfo = { workspace = true }
+thiserror = { workspace = true }
