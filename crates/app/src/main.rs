@@ -1,3 +1,8 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 fn main() {
-    println!("claude-pending-board — Tauri app placeholder (Phase 3)");
+    tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
