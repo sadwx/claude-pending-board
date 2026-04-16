@@ -1,0 +1,22 @@
+{
+  "productName": "Claude Pending Board",
+  "version": "0.1.0",
+  "identifier": "com.claude-pending-board.app",
+  "build": {
+    "frontendDist": "ui/hud"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  }
+}

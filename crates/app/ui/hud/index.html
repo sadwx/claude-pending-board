@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Pending Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header" data-tauri-drag-region>
+    <div class="status-dot" id="statusDot"></div>
+    <span class="title">Claude Pending</span>
+    <span class="count-badge" id="countBadge">0</span>
+    <button class="header-btn" id="settingsBtn" title="Settings">&#9881;</button>
+    <button class="header-btn" id="dismissBtn" title="Dismiss">&times;</button>
+  </div>
+
+  <div class="entry-list" id="entryList">
+    <div class="empty-state" id="emptyState">
+      <div class="emoji">&#10003;</div>
+      <div>No pending items</div>
+    </div>
+  </div>
+
+  <div class="dismiss-panel" id="dismissPanel">
+    <div class="heading" id="dismissHeading">Going silent for 15 minutes</div>
+    <div class="subtitle" id="dismissSubtitle">0 items stay on board</div>
+    <div class="dismiss-buttons">
+      <div>
+        <button class="dismiss-btn default" id="btnWakeMe">
+          Wake me <span class="pill">DEFAULT</span>
+          <div class="countdown" id="wakeMeCountdown">Wake me &middot; 5s</div>
+        </button>
+        <div class="dismiss-caption">Choose this to wake me<br>after 15 minutes</div>
+      </div>
+      <div>
+        <button class="dismiss-btn" id="btnStaySilent">
+          Stay silent
+        </button>
+        <div class="dismiss-caption">Choose this to stay silent</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
