@@ -1,0 +1,12 @@
+[package]
+name = "claude-pending-board-adapters"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+claude-pending-board-core = { path = "../core" }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+sysinfo = { workspace = true }
