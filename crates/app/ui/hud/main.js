@@ -160,12 +160,14 @@ async function showDismissPanel() {
 }
 
 function updateCountdown(secs, isWakeMeDefault) {
+  // Only the default button shows the countdown, inline after the label.
+  // The element is a sibling span to btn-label, so we just append " · Ns".
   if (isWakeMeDefault) {
-    wakeMeCountdown.textContent = "Wake me \u00B7 " + secs + "s";
+    wakeMeCountdown.textContent = " \u00B7 " + secs + "s";
     staySilentCountdown.textContent = "";
   } else {
     wakeMeCountdown.textContent = "";
-    staySilentCountdown.textContent = "Stay silent \u00B7 " + secs + "s";
+    staySilentCountdown.textContent = " \u00B7 " + secs + "s";
   }
 }
 

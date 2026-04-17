@@ -235,6 +235,28 @@ html, body {
   white-space: nowrap;
 }
 
+.dismiss-btn .btn-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.dismiss-btn .btn-icon.muted { opacity: 0.7; }
+
+.dismiss-btn .btn-body {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.dismiss-btn .btn-countdown {
+  color: var(--ctp-pink);
+  font-weight: 700;
+}
+
+.dismiss-btn:not(.default) .btn-label {
+  color: var(--ctp-subtext0);
+}
+
 .dismiss-btn .countdown {
   font-size: 11px;
   color: var(--ctp-subtext0);

@@ -28,17 +28,21 @@
     <div class="dismiss-buttons">
       <div>
         <button class="dismiss-btn" id="btnWakeMe">
-          <span class="btn-label">Wake me</span>
           <span class="pill" id="wakeMePill" style="display:none">DEFAULT</span>
-          <div class="countdown" id="wakeMeCountdown"></div>
+          <div class="btn-icon">&#128276;</div>
+          <div class="btn-body">
+            <span class="btn-label">Wake me</span><span class="btn-countdown" id="wakeMeCountdown"></span>
+          </div>
         </button>
         <div class="dismiss-caption">Choose this to wake me<br><span id="wakeMeCaptionTail">after 15 minutes</span></div>
       </div>
       <div>
         <button class="dismiss-btn" id="btnStaySilent">
-          <span class="btn-label">Stay silent</span>
           <span class="pill" id="staySilentPill" style="display:none">DEFAULT</span>
-          <div class="countdown" id="staySilentCountdown"></div>
+          <div class="btn-icon muted">&#128277;</div>
+          <div class="btn-body">
+            <span class="btn-label">Stay silent</span><span class="btn-countdown" id="staySilentCountdown"></span>
+          </div>
         </button>
         <div class="dismiss-caption">Choose this to stay silent</div>
       </div>
