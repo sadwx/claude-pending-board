@@ -134,6 +134,46 @@ pub fn hide_settings(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Move the HUD window to its default position (bottom-right of the primary
+/// monitor, near the tray) and clear any saved position in config.
+#[tauri::command]
+pub fn reset_hud_position(app: AppHandle, state: State<SharedState>) -> Result<(), String> {
+    let window = app
+        .get_webview_window("hud")
+        .ok_or_else(|| "hud window not found".to_string())?;
+
+    let monitor = window
+        .primary_monitor()
+        .map_err(|e| format!("failed to get monitor: {e}"))?
+        .ok_or_else(|| "no primary monitor".to_string())?;
+
+    let size = monitor.size();
+    let scale = monitor.scale_factor();
+
+    // HUD is 380x440 logical pixels. Margin + taskbar allowance at the bottom.
+    let hud_w = (380.0 * scale) as i32;
+    let hud_h = (440.0 * scale) as i32;
+    let margin_right = (16.0 * scale) as i32;
+    let margin_bottom = (64.0 * scale) as i32;
+
+    let x = size.width as i32 - hud_w - margin_right;
+    let y = size.height as i32 - hud_h - margin_bottom;
+
+    let position = tauri::PhysicalPosition::new(x, y);
+    window
+        .set_position(position)
+        .map_err(|e| format!("failed to set position: {e}"))?;
+
+    let mut s = state.lock().unwrap();
+    s.config.hud_position = None;
+    s.config
+        .save(&Config::default_path())
+        .map_err(|e| format!("failed to save config: {e}"))?;
+
+    tracing::info!(x, y, "HUD position reset to tray-anchor default");
+    Ok(())
+}
+
 #[tauri::command]
 pub fn get_config(state: State<SharedState>) -> Config {
     let s = state.lock().unwrap();

@@ -75,6 +75,7 @@ fn main() {
             commands::manual_open,
             commands::open_settings,
             commands::hide_settings,
+            commands::reset_hud_position,
             commands::get_config,
             commands::apply_config,
         ])

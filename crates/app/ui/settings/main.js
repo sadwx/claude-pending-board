@@ -79,10 +79,8 @@ saveBtn.addEventListener("click", async function() {
 });
 
 resetPositionBtn.addEventListener("click", async function() {
-  var config = await invoke("get_config");
-  config.hud_position = null;
   try {
-    await invoke("apply_config", { config: config });
+    await invoke("reset_hud_position");
     statusMsg.textContent = "HUD position reset";
     statusMsg.style.color = "#a6e3a1";
     setTimeout(function() { statusMsg.textContent = ""; }, 2000);
