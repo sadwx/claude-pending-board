@@ -74,6 +74,7 @@ fn main() {
             commands::dismiss_hud,
             commands::manual_open,
             commands::open_settings,
+            commands::hide_settings,
             commands::get_config,
             commands::apply_config,
         ])

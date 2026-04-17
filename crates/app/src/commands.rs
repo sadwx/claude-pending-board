@@ -125,6 +125,16 @@ pub fn open_settings(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn hide_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("settings") {
+        window
+            .hide()
+            .map_err(|e| format!("failed to hide settings: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_config(state: State<SharedState>) -> Config {
     let s = state.lock().unwrap();
     s.config.clone()

@@ -68,11 +68,9 @@ saveBtn.addEventListener("click", async function() {
     // the confirmation flash.
     setTimeout(function() {
       statusMsg.textContent = "";
-      if (window.__TAURI__ && window.__TAURI__.window) {
-        window.__TAURI__.window.getCurrentWindow().hide().catch(function(err) {
-          console.warn("failed to hide settings window:", err);
-        });
-      }
+      invoke("hide_settings").catch(function(err) {
+        console.warn("failed to hide settings window:", err);
+      });
     }, 600);
   } catch (e) {
     statusMsg.textContent = "Failed to save: " + e;
