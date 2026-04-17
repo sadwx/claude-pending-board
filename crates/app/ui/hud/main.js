@@ -13,6 +13,10 @@ const dismissSubtitle = document.getElementById("dismissSubtitle");
 const btnWakeMe = document.getElementById("btnWakeMe");
 const btnStaySilent = document.getElementById("btnStaySilent");
 const wakeMeCountdown = document.getElementById("wakeMeCountdown");
+const staySilentCountdown = document.getElementById("staySilentCountdown");
+const wakeMePill = document.getElementById("wakeMePill");
+const staySilentPill = document.getElementById("staySilentPill");
+const wakeMeCaptionTail = document.getElementById("wakeMeCaptionTail");
 
 let currentEntries = [];
 let dismissCountdownTimer = null;
@@ -122,14 +126,24 @@ async function showDismissPanel() {
   dismissHeading.textContent = "Going silent for " + config.cooldown_minutes + " minutes";
   dismissSubtitle.textContent = currentEntries.length + " items stay on board";
 
+  // Update the caption under the Wake me button to reflect the actual
+  // configured cooldown (not the hardcoded 15).
+  if (wakeMeCaptionTail) {
+    wakeMeCaptionTail.textContent = "after " + config.cooldown_minutes + " minutes";
+  }
+
+  // Apply "default" styling + DEFAULT pill to whichever button matches the
+  // global Reminding setting.
   if (config.reminding_enabled) {
     btnWakeMe.classList.add("default");
     btnStaySilent.classList.remove("default");
-    if (btnWakeMe.querySelector(".pill")) btnWakeMe.querySelector(".pill").style.display = "";
+    wakeMePill.style.display = "";
+    staySilentPill.style.display = "none";
   } else {
     btnStaySilent.classList.add("default");
     btnWakeMe.classList.remove("default");
-    if (btnWakeMe.querySelector(".pill")) btnWakeMe.querySelector(".pill").style.display = "none";
+    wakeMePill.style.display = "none";
+    staySilentPill.style.display = "";
   }
 
   var remaining = config.dismiss_countdown_secs || 5;
@@ -148,8 +162,10 @@ async function showDismissPanel() {
 function updateCountdown(secs, isWakeMeDefault) {
   if (isWakeMeDefault) {
     wakeMeCountdown.textContent = "Wake me \u00B7 " + secs + "s";
+    staySilentCountdown.textContent = "";
   } else {
     wakeMeCountdown.textContent = "";
+    staySilentCountdown.textContent = "Stay silent \u00B7 " + secs + "s";
   }
 }
 
