@@ -1,6 +1,17 @@
-const { invoke } = window.__TAURI__.core;
+// Wait for Tauri to be ready, then initialize the settings page.
+function initSettings() {
+  if (!window.__TAURI__ || !window.__TAURI__.core) {
+    console.warn("__TAURI__ not ready, retrying in 50ms");
+    setTimeout(initSettings, 50);
+    return;
+  }
+  run();
+}
 
-var cooldownSlider = document.getElementById("cooldownMinutes");
+function run() {
+  const { invoke } = window.__TAURI__.core;
+
+  var cooldownSlider = document.getElementById("cooldownMinutes");
 var cooldownValue = document.getElementById("cooldownValue");
 var remindingCheckbox = document.getElementById("remindingEnabled");
 var graceSlider = document.getElementById("autoHideGrace");
@@ -74,4 +85,12 @@ resetPositionBtn.addEventListener("click", async function() {
   }
 });
 
-loadConfig();
+  loadConfig();
+}
+
+// Start when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initSettings);
+} else {
+  initSettings();
+}

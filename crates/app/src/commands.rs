@@ -100,25 +100,42 @@ pub fn manual_open(app: AppHandle, state: State<SharedState>) -> Result<(), Stri
     Ok(())
 }
 
-#[tauri::command]
-pub fn open_settings(app: AppHandle) -> Result<(), String> {
+/// Shared helper to open (or focus) the Settings window.
+///
+/// Runs on the main thread to avoid deadlocks — window creation from a
+/// non-main thread on Windows has been observed to hang the webview.
+pub fn open_settings_window(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("settings") {
         let _ = window.show();
         let _ = window.set_focus();
+        tracing::info!("settings window already exists, focused");
         return Ok(());
     }
 
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "settings",
-        tauri::WebviewUrl::App("settings/index.html".into()),
-    )
-    .title("Settings - Claude Pending Board")
-    .inner_size(480.0, 500.0)
-    .resizable(true)
-    .build()
-    .map_err(|e| format!("failed to create settings window: {e}"))?;
+    let app_handle = app.clone();
+    app.run_on_main_thread(move || {
+        match tauri::WebviewWindowBuilder::new(
+            &app_handle,
+            "settings",
+            tauri::WebviewUrl::App("settings/index.html".into()),
+        )
+        .title("Settings - Claude Pending Board")
+        .inner_size(480.0, 500.0)
+        .resizable(true)
+        .build()
+        {
+            Ok(_) => tracing::info!("settings window created"),
+            Err(e) => tracing::error!(error = %e, "failed to create settings window"),
+        }
+    })
+    .map_err(|e| format!("failed to dispatch to main thread: {e}"))?;
+
     Ok(())
+}
+
+#[tauri::command]
+pub fn open_settings(app: AppHandle) -> Result<(), String> {
+    open_settings_window(&app)
 }
 
 #[tauri::command]

@@ -34,19 +34,8 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             "settings" => {
-                if let Some(window) = app.get_webview_window("settings") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                } else {
-                    let _ = tauri::WebviewWindowBuilder::new(
-                        app,
-                        "settings",
-                        tauri::WebviewUrl::App("settings/index.html".into()),
-                    )
-                    .title("Settings - Claude Pending Board")
-                    .inner_size(480.0, 500.0)
-                    .resizable(true)
-                    .build();
+                if let Err(e) = crate::commands::open_settings_window(app) {
+                    tracing::error!(error = %e, "failed to open settings from tray");
                 }
             }
             "quit" => {
