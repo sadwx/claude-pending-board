@@ -200,8 +200,9 @@ html, body {
 .dismiss-buttons { display: flex; gap: 12px; width: 100%; }
 
 .dismiss-btn {
+  position: relative;
   flex: 1;
-  padding: 12px 8px;
+  padding: 16px 10px;
   border-radius: 8px;
   border: 2px solid var(--ctp-surface1);
   background: var(--ctp-surface0);
@@ -214,19 +215,24 @@ html, body {
 }
 
 .dismiss-btn:hover { border-color: var(--ctp-overlay0); }
-.dismiss-btn.default { border-color: var(--ctp-pink); }
+.dismiss-btn.default {
+  border-color: var(--ctp-pink);
+  box-shadow: 0 0 0 3px rgba(245, 194, 231, 0.15);
+}
 
 .dismiss-btn .pill {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
   background: var(--ctp-pink);
   color: var(--ctp-crust);
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
-  vertical-align: middle;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .dismiss-btn .countdown {
