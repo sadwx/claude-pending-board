@@ -64,7 +64,16 @@ saveBtn.addEventListener("click", async function() {
     await invoke("apply_config", { config: config });
     statusMsg.textContent = "Settings saved";
     statusMsg.style.color = "#a6e3a1";
-    setTimeout(function() { statusMsg.textContent = ""; }, 2000);
+    // Hide the settings window shortly after saving so the user can see
+    // the confirmation flash.
+    setTimeout(function() {
+      statusMsg.textContent = "";
+      if (window.__TAURI__ && window.__TAURI__.window) {
+        window.__TAURI__.window.getCurrentWindow().hide().catch(function(err) {
+          console.warn("failed to hide settings window:", err);
+        });
+      }
+    }, 600);
   } catch (e) {
     statusMsg.textContent = "Failed to save: " + e;
     statusMsg.style.color = "#f38ba8";

@@ -83,9 +83,19 @@ html, body {
   padding: 4px 6px;
   border-radius: 4px;
   -webkit-app-region: no-drag;
+  min-width: 28px;
+  min-height: 28px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-left: 2px;
 }
 
 .header-btn:hover { background: var(--ctp-surface0); color: var(--ctp-text); }
+.dismiss-x { color: var(--ctp-subtext0); font-size: 14px; font-weight: 700; }
+.dismiss-x:hover { background: var(--ctp-red); color: var(--ctp-crust); }
 
 .entry-list {
   height: calc(440px - 44px);
