@@ -1,6 +1,11 @@
 # Claude Pending Board
 
+[![CI](https://github.com/sadwx/claude-pending-board/actions/workflows/ci.yml/badge.svg)](https://github.com/sadwx/claude-pending-board/actions/workflows/ci.yml)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#requirements)
+
 A cross-platform tray app that surfaces every Claude Code CLI session waiting for your input — across projects, across terminals, in one floating window.
+
+![Dismiss confirmation panel](./docs/screenshots/current-dismiss-v2.png)
 
 ## What it does
 
@@ -10,7 +15,7 @@ Claude Pending Board watches every session and pushes a single floating window w
 
 ## Status
 
-**Pre-alpha.** The design spec lives under `openspec/changes/add-claude-pending-board/`. Implementation has not started yet; this repository currently contains only the spec, documentation, and scaffolding.
+**Alpha (v0.1.0 in progress).** Core library, terminal adapters, hook scripts, and the Tauri app with HUD + Settings + tray are all working end-to-end. Phase 4 finishes the Claude Code plugin, CI, and first public release.
 
 ## How it works (high level)
 
