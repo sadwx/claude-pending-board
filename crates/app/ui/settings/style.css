@@ -1,78 +1,185 @@
+/* Claude Pending Board — Settings (Dracula · Variation B) */
+
 :root {
-  --ctp-base: #1e1e2e;
-  --ctp-mantle: #181825;
-  --ctp-surface0: #313244;
-  --ctp-surface1: #45475a;
-  --ctp-text: #cdd6f4;
-  --ctp-subtext0: #a6adc8;
-  --ctp-green: #a6e3a1;
-  --ctp-pink: #f5c2e7;
-  --ctp-red: #f38ba8;
+  --drac-bg:       #282a36;
+  --drac-mantle:   #21222c;
+  --drac-current:  #44475a;
+  --drac-fg:       #f8f8f2;
+  --drac-comment:  #6272a4;
+  --drac-subtext:  #bdc1d1;
+  --drac-green:    #50fa7b;
+  --drac-pink:     #ff79c6;
+  --drac-purple:   #bd93f9;
+  --drac-red:      #ff5555;
+  --border-soft: rgba(68, 71, 90, 0.35);
+  --accent-gradient: linear-gradient(90deg, var(--drac-purple), var(--drac-pink));
+  --accent-gradient-v: linear-gradient(180deg, var(--drac-purple) 0%, var(--drac-pink) 130%);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: var(--ctp-base);
-  color: var(--ctp-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px;
-  padding: 24px;
+  background: var(--drac-bg);
+  color: var(--drac-fg);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 22px 26px 26px;
+  user-select: none;
 }
 
 h1 {
-  font-size: 18px;
-  margin-bottom: 20px;
-  color: var(--ctp-pink);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--drac-fg);
+  margin-bottom: 18px;
+  letter-spacing: -0.1px;
 }
+
+.section-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--drac-purple);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 18px 0 10px;
+}
+.section-heading:first-of-type { margin-top: 0; }
 
 .setting-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 14px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--ctp-surface0);
 }
 
-.setting-group label { flex: 1; }
-.setting-group input[type="range"] { width: 120px; }
-.setting-group input[type="checkbox"] { width: 20px; height: 20px; }
-.setting-group select {
-  background: var(--ctp-surface0);
-  color: var(--ctp-text);
-  border: 1px solid var(--ctp-surface1);
-  padding: 4px 8px;
-  border-radius: 4px;
+.setting-group label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--drac-fg);
+}
+.setting-group .hint {
+  font-size: 10.5px;
+  color: var(--drac-comment);
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.setting-group input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 4px;
+  background: var(--drac-current);
+  border-radius: 2px;
+  outline: none;
+}
+.setting-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px; height: 14px; border-radius: 7px;
+  background: var(--drac-fg);
+  box-shadow: 0 0 0 3px rgba(189, 147, 249, 0.2), 0 1px 3px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.setting-group input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 7px; border: none;
+  background: var(--drac-fg);
+  box-shadow: 0 0 0 3px rgba(189, 147, 249, 0.2), 0 1px 3px rgba(0,0,0,0.4);
+  cursor: pointer;
 }
 
 .range-value {
-  width: 30px;
-  text-align: right;
-  color: var(--ctp-subtext0);
-  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--drac-fg);
+  background: var(--drac-mantle);
+  border: 1px solid var(--drac-current);
+  padding: 2px 8px;
+  border-radius: 4px;
+  min-width: 44px;
+  text-align: center;
+  margin-left: 0;
+}
+
+.setting-group input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 34px; height: 20px;
+  background: var(--drac-current);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 180ms;
+  flex-shrink: 0;
+}
+.setting-group input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 8px;
+  background: var(--drac-fg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  transition: left 180ms;
+}
+.setting-group input[type="checkbox"]:checked {
+  background: var(--accent-gradient);
+}
+.setting-group input[type="checkbox"]:checked::after { left: 16px; }
+
+.setting-group select {
+  font-family: var(--mono);
+  background: var(--drac-mantle);
+  color: var(--drac-fg);
+  border: 1px solid var(--drac-current);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .actions {
-  margin-top: 20px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  justify-content: flex-end;
 }
-
 .actions button {
-  padding: 8px 16px;
+  padding: 7px 14px;
   border-radius: 6px;
   border: none;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--sans);
 }
+#saveBtn {
+  padding: 7px 16px;
+  background: var(--accent-gradient-v);
+  color: var(--drac-bg);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(189, 147, 249, 0.27);
+}
+#saveBtn:hover { filter: brightness(1.05); }
 
-#saveBtn { background: var(--ctp-green); color: var(--ctp-base); }
-#resetPositionBtn { background: var(--ctp-surface1); color: var(--ctp-text); }
+#resetPositionBtn {
+  background: transparent;
+  border: 1px solid var(--drac-current);
+  color: var(--drac-subtext);
+}
+#resetPositionBtn:hover { background: var(--drac-current); color: var(--drac-fg); }
 
 .status {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--ctp-green);
-  min-height: 20px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--drac-green);
+  font-family: var(--mono);
+  min-height: 16px;
+  text-align: right;
 }
