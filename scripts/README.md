@@ -7,7 +7,7 @@ These scripts are invoked by Claude Code hooks to write pending-board entries to
 | Script | Platform | Shell |
 |---|---|---|
 | `pending_hook.ps1` | Windows | PowerShell 7 |
-| `pending_hook.sh` | macOS / Linux | Bash |
+| `pending_hook.sh` | macOS | Bash |
 
 ## How they work
 
@@ -38,7 +38,7 @@ echo '{"hook_event_name":"Stop","session_id":"test-123","cwd":"C:/tmp"}' | pwsh 
 Get-Content ~/.claude/pending/board.jsonl
 ```
 
-### macOS / Linux (Bash)
+### macOS (Bash)
 
 ```bash
 # Test Notification (add)

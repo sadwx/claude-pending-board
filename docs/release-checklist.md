@@ -7,7 +7,7 @@ Manual verification required before cutting a new release.
 - [ ] `cargo fmt --check --all` passes
 - [ ] `cargo clippy --workspace -- -D warnings` passes
 - [ ] `cargo test --workspace` all green (expected: ~60+ tests)
-- [ ] `cargo tauri build --release` succeeds on each platform (Win / macOS / Linux)
+- [ ] `cargo tauri build --release` succeeds on each platform (Win / macOS)
 
 ## Smoke tests — per platform
 

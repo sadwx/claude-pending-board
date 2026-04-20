@@ -82,18 +82,10 @@ except:
             local terminal_pid="null"
             local current_pid=$claude_pid
             for _ in $(seq 1 20); do
-                if [ "$(uname)" = "Darwin" ]; then
-                    local ppid_val
-                    ppid_val=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
-                    local proc_name
-                    proc_name=$(ps -o comm= -p "$current_pid" 2>/dev/null | xargs basename 2>/dev/null)
-                else
-                    # Linux: read from /proc
-                    local ppid_val
-                    ppid_val=$(awk '{print $4}' "/proc/$current_pid/stat" 2>/dev/null)
-                    local proc_name
-                    proc_name=$(awk '{print $2}' "/proc/$current_pid/stat" 2>/dev/null | tr -d '()')
-                fi
+                local ppid_val
+                ppid_val=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
+                local proc_name
+                proc_name=$(ps -o comm= -p "$current_pid" 2>/dev/null | xargs basename 2>/dev/null)
 
                 if [ -z "$ppid_val" ] || [ "$ppid_val" = "0" ]; then
                     break

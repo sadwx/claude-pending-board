@@ -1,7 +1,7 @@
 # Claude Pending Board
 
 [![CI](https://github.com/sadwx/claude-pending-board/actions/workflows/ci.yml/badge.svg)](https://github.com/sadwx/claude-pending-board/actions/workflows/ci.yml)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#requirements)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-blue)](#requirements)
 
 A cross-platform tray app that surfaces every Claude Code CLI session waiting for your input — across projects, across terminals, in one floating window.
 
@@ -23,7 +23,7 @@ Claude Pending Board watches every session and pushes a single floating window w
 Claude Code (multiple sessions)
   └─ Notification / UserPromptSubmit / Stop hooks
      └─ pending_hook.ps1  (Windows)
-        pending_hook.sh   (macOS / Linux)
+        pending_hook.sh   (macOS)
            └─ appends JSONL op to  ~/.claude/pending/board.jsonl
 
    Tauri 2 app (tray icon)
@@ -36,7 +36,7 @@ Claude Code (multiple sessions)
 - **Sorting**: permission > idle > stale, newest first within each group.
 - **Click to focus**: live entries jump to the owning terminal pane. Stale entries (e.g. after a reboot) spawn a fresh `claude --resume <session_id>` in a new tab.
 - **Dismiss with cooldown**: manually dismiss the window with a 5-second confirmation panel; configurable 15-minute cooldown; optional reminder when new items accumulate during the cooldown.
-- **Cross-platform**: one Rust codebase for Windows, macOS, and Linux. WezTerm adapter everywhere; iTerm2 adapter on macOS.
+- **Cross-platform**: one Rust codebase for Windows and macOS. WezTerm adapter on both; iTerm2 adapter on macOS.
 
 See `openspec/changes/add-claude-pending-board/design.md` for the full design rationale.
 
@@ -44,7 +44,7 @@ See `openspec/changes/add-claude-pending-board/design.md` for the full design ra
 
 - **Claude Code** installed and registered (any version with the `Notification`, `UserPromptSubmit`, and `Stop` hook events).
 - **Terminal**:
-  - WezTerm (Windows / Linux / macOS) — `wezterm` in `PATH`.
+  - WezTerm (Windows / macOS) — `wezterm` in `PATH`.
   - iTerm2 (macOS only) — for the iTerm2 adapter.
 - **For building from source**: Rust 1.83+, the Tauri 2 prerequisites for your OS (`cargo-tauri`), and Node.js 20+ for the front-end toolchain.
 

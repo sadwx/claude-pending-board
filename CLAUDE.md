@@ -4,7 +4,7 @@ Project-specific context for Claude Code sessions working on this repo.
 
 ## What this is
 
-`claude-pending-board` is a cross-platform tray app that surfaces every waiting Claude Code CLI session in one floating HUD. Claude Code hooks write to `~/.claude/pending/board.jsonl`; the tray app watches that file and renders a HUD, and clicking an entry focuses the owning WezTerm (Win/Linux) or iTerm2 (macOS) pane.
+`claude-pending-board` is a cross-platform tray app that surfaces every waiting Claude Code CLI session in one floating HUD. Claude Code hooks write to `~/.claude/pending/board.jsonl`; the tray app watches that file and renders a HUD, and clicking an entry focuses the owning WezTerm (Windows) or iTerm2 (macOS) pane.
 
 Design + spec live under `openspec/changes/add-claude-pending-board/`.
 
@@ -56,7 +56,7 @@ cargo clippy --workspace -- -D warnings
 # Smoke tests
 pwsh scripts/smoke-test-auto.ps1                        # ~40s non-interactive
 pwsh scripts/smoke-test.ps1                             # interactive, for humans
-bash scripts/smoke-test.sh                              # same, for macOS/Linux
+bash scripts/smoke-test.sh                              # same, for macOS
 ```
 
 ## Conventions
