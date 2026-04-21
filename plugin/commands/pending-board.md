@@ -50,7 +50,7 @@ Run the following diagnostic checks and report each as OK or FAIL with a remedia
 2. **Hook scripts exist**: Check `${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1` (Windows) or `pending_hook.sh` (Unix).
 3. **Board file writable**: Try `touch ~/.claude/pending/board.jsonl` (create if missing). Verify append works.
 4. **Log directory writable**: Same for `~/.claude/pending/logs/`.
-5. **Terminal adapter in PATH**: Check `wezterm --version` (Windows/Linux) or `osascript -e 'tell application "iTerm2" to version'` (macOS).
+5. **Terminal adapter in PATH**: Check `wezterm --version` (Windows) or `osascript -e 'tell application "iTerm2" to version'` (macOS).
 6. **Tray app installed**: Check for `claude-pending-board-app` on PATH or standard install locations.
 
 Output format:

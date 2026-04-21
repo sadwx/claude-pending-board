@@ -3,5 +3,8 @@
   "identifier": "default",
   "description": "Default capability for HUD and Settings windows",
   "windows": ["hud", "settings"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
 }

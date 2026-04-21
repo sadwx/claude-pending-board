@@ -1,5 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
+const { getCurrentWindow } = window.__TAURI__.window;
 
 const entryList = document.getElementById("entryList");
 const emptyState = document.getElementById("emptyState");
@@ -210,6 +211,17 @@ settingsBtn.addEventListener("click", async function() {
   } catch (e) {
     console.error("open_settings error:", e);
   }
+});
+
+// Manual drag fallback: data-tauri-drag-region is unreliable on macOS when
+// the window is decorations(false) + always-on-top. Explicit startDragging
+// on header mousedown works consistently.
+document.querySelector(".header").addEventListener("mousedown", function(e) {
+  if (e.button !== 0) return;
+  if (e.target.closest("button")) return;
+  getCurrentWindow().startDragging().catch(function(err) {
+    console.error("startDragging error:", err);
+  });
 });
 
 listen("entries-updated", function(event) {

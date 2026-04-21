@@ -8,7 +8,7 @@ End-user install guide. This walks you through the full setup from zero to a wor
 
 1. **Claude Code** installed. Verify with `claude --version`.
 2. **A supported terminal** in your `PATH`:
-   - **Windows / Linux**: [WezTerm](https://wezfurlong.org/wezterm/). Verify with `wezterm --version`.
+   - **Windows**: [WezTerm](https://wezfurlong.org/wezterm/). Verify with `wezterm --version`.
    - **macOS**: WezTerm or [iTerm2](https://iterm2.com/).
 3. **Write access** to `~/.claude/` and `~/.claude/pending/` (created automatically on first run).
 
@@ -21,7 +21,6 @@ Windows Terminal is not supported as a focus target (cannot programmatically act
 1. Go to the [releases page](https://github.com/your-org/claude-pending-board/releases) and download the artifact for your OS:
    - Windows: `claude-pending-board-<version>-x64-setup.exe` or the portable `.msi`
    - macOS: `claude-pending-board-<version>.dmg` (universal)
-   - Linux: `claude-pending-board-<version>.AppImage` or the `.deb` / `.rpm` for your distro
 2. Install / extract it to the usual place for your OS.
 3. Launch it. A tray icon appears with a pink status dot.
 
@@ -94,7 +93,7 @@ Open **Settings…** from the tray and adjust any of the following:
 | Auto-hide grace delay | 2 s | Delay after the last item clears before the HUD hides |
 | Dismiss confirmation countdown | 5 s | Duration of the "Going silent for N minutes" panel |
 | Skip dismiss confirmation | off | Bypass the confirmation panel entirely |
-| Default terminal adapter | WezTerm (Win/Linux) / iTerm2 (macOS) | Which adapter to use for focus and resume |
+| Default terminal adapter | WezTerm (Windows) / iTerm2 (macOS) | Which adapter to use for focus and resume |
 | HUD position | near tray | Drag the window to move; "Reset HUD position" returns it |
 
 Changes apply immediately — no restart needed.
@@ -169,6 +168,6 @@ Hook scripts live in `scripts/` and can be invoked directly while iterating on t
 ```
 
 ```bash
-# macOS / Linux
+# macOS
 echo '{"hook_event_name":"Notification","session_id":"...","cwd":"...","transcript_path":"...","notification_type":"permission_prompt","message":"Test"}' | bash scripts/pending_hook.sh
 ```
