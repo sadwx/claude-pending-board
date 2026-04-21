@@ -37,6 +37,31 @@ fn main() {
             .skip_taskbar(true)
             .build()?;
 
+            // Pre-create the Settings window hidden. Creating it here during
+            // setup (main thread) avoids race conditions and webview hangs we
+            // saw when creating it on-demand from a command handler.
+            let settings_window = tauri::WebviewWindowBuilder::new(
+                app,
+                "settings",
+                tauri::WebviewUrl::App("settings/index.html".into()),
+            )
+            .title("Settings - Claude Pending Board")
+            .inner_size(480.0, 500.0)
+            .resizable(true)
+            .visible(false)
+            .skip_taskbar(true)
+            .build()?;
+
+            // Intercept the close button: hide the window instead of destroying
+            // it, so we can keep reopening the same window.
+            let settings_handle = settings_window.clone();
+            settings_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = settings_handle.hide();
+                }
+            });
+
             services::boot(app.handle(), shared_state.clone());
             tray::setup(app)?;
 
@@ -49,6 +74,8 @@ fn main() {
             commands::dismiss_hud,
             commands::manual_open,
             commands::open_settings,
+            commands::hide_settings,
+            commands::reset_hud_position,
             commands::get_config,
             commands::apply_config,
         ])

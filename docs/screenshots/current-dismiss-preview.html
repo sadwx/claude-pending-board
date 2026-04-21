@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Current Dismiss Panel Preview</title>
+  <link rel="stylesheet" href="../../crates/app/ui/hud/style.css">
+  <style>
+    body {
+      width: 380px !important;
+      height: 440px !important;
+      background: #1e1e2e;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 20px auto;
+    }
+    .dismiss-panel { display: flex !important; }
+    .entry-list { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="status-dot has-items"></div>
+    <span class="title">Claude Pending</span>
+    <span class="count-badge">2</span>
+    <button class="header-btn">&#9881;</button>
+    <button class="header-btn dismiss-x">&#10005;</button>
+  </div>
+
+  <div class="dismiss-panel active">
+    <div class="heading">Going silent for 15 minutes</div>
+    <div class="subtitle">2 items stay on board</div>
+    <div class="dismiss-buttons">
+      <div>
+        <button class="dismiss-btn default">
+          <span class="pill">DEFAULT</span>
+          <div class="btn-icon">&#128276;</div>
+          <div class="btn-body">
+            <span class="btn-label">Wake me</span><span class="btn-countdown"> &middot; 5s</span>
+          </div>
+        </button>
+        <div class="dismiss-caption">Choose this to wake me<br><span>after 15 minutes</span></div>
+      </div>
+      <div>
+        <button class="dismiss-btn">
+          <div class="btn-icon muted">&#128277;</div>
+          <div class="btn-body">
+            <span class="btn-label">Stay silent</span>
+          </div>
+        </button>
+        <div class="dismiss-caption">Choose this to stay silent</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

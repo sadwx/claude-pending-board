@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin.json",
+  "name": "claude-pending-board",
+  "version": "0.1.0",
+  "description": "Surface every pending Claude Code session across all projects in a single floating HUD window.",
+  "author": {
+    "name": "sadwx",
+    "url": "https://github.com/sadwx"
+  },
+  "homepage": "https://github.com/sadwx/claude-pending-board",
+  "repository": "https://github.com/sadwx/claude-pending-board",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "platform": "windows"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "platform": "darwin"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "platform": "windows"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "platform": "darwin"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "platform": "windows"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "platform": "darwin"
+          }
+        ]
+      }
+    ]
+  }
+}

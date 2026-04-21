@@ -68,7 +68,12 @@ function run() {
       await invoke("apply_config", { config: config });
       statusMsg.textContent = "Saved";
       statusMsg.style.color = "#50fa7b";
-      setTimeout(function () { statusMsg.textContent = ""; }, 2000);
+      setTimeout(function () {
+        statusMsg.textContent = "";
+        invoke("hide_settings").catch(function (err) {
+          console.warn("failed to hide settings window:", err);
+        });
+      }, 600);
     } catch (e) {
       statusMsg.textContent = "Failed to save: " + e;
       statusMsg.style.color = "#ff5555";
@@ -77,9 +82,7 @@ function run() {
 
   resetPositionBtn.addEventListener("click", async function () {
     try {
-      var config = await invoke("get_config");
-      config.hud_position = null;
-      await invoke("apply_config", { config: config });
+      await invoke("reset_hud_position");
       statusMsg.textContent = "HUD position reset";
       statusMsg.style.color = "#50fa7b";
       setTimeout(function () { statusMsg.textContent = ""; }, 2000);
