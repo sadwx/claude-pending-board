@@ -203,7 +203,7 @@ mod tests {
 
         fn advance(&self, duration: Duration) {
             let mut now = self.now.lock().unwrap();
-            *now = *now + duration;
+            *now += duration;
         }
     }
 
