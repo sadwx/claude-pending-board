@@ -103,6 +103,32 @@ function buildRow(entry) {
   meta.appendChild(time);
   row.appendChild(meta);
 
+  const dismissX = document.createElement("button");
+  dismissX.className = "entry-dismiss";
+  dismissX.setAttribute("aria-label", "Dismiss this entry");
+  dismissX.title = "Dismiss";
+  const xSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  xSvg.setAttribute("width", "10");
+  xSvg.setAttribute("height", "10");
+  xSvg.setAttribute("viewBox", "0 0 24 24");
+  xSvg.setAttribute("fill", "none");
+  xSvg.setAttribute("stroke", "currentColor");
+  xSvg.setAttribute("stroke-width", "2.8");
+  xSvg.setAttribute("stroke-linecap", "round");
+  const xPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  xPath.setAttribute("d", "M18 6 6 18M6 6l12 12");
+  xSvg.appendChild(xPath);
+  dismissX.appendChild(xSvg);
+  dismissX.addEventListener("click", async function (e) {
+    e.stopPropagation();
+    try {
+      await invoke("dismiss_entry", { sessionId: entry.session_id });
+    } catch (err) {
+      console.error("dismiss_entry error:", err);
+    }
+  });
+  row.appendChild(dismissX);
+
   row.addEventListener("click", function () { onEntryClick(entry.session_id); });
   return row;
 }

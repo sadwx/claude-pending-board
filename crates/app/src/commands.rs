@@ -202,3 +202,33 @@ pub async fn install_plugin() -> Result<(), String> {
         .await
         .map_err(|e| format!("install task failed: {e}"))?
 }
+
+/// Manually dismiss a single entry from the HUD.
+///
+/// Appends a `clear` op with reason `user_dismissed` to the board file. The
+/// watcher picks it up, the store drops the entry, and the HUD re-renders
+/// through the normal pipeline — same shape as hook-driven clears or the
+/// periodic stale-cleanup loop.
+#[tauri::command]
+pub fn dismiss_entry(session_id: String) -> Result<(), String> {
+    use claude_pending_board_core::types::Op;
+    use std::io::Write;
+
+    let home = dirs_next::home_dir().ok_or_else(|| "no home dir".to_string())?;
+    let board_file = home.join(".claude").join("pending").join("board.jsonl");
+
+    let op = Op::Clear {
+        ts: chrono::Utc::now(),
+        session_id,
+        reason: "user_dismissed".to_string(),
+    };
+    let line = serde_json::to_string(&op).map_err(|e| format!("serialize: {e}"))?;
+
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&board_file)
+        .map_err(|e| format!("open board: {e}"))?;
+    writeln!(file, "{}", line).map_err(|e| format!("write: {e}"))?;
+    Ok(())
+}
