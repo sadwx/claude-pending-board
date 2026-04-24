@@ -3,39 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - Claude Pending Board</title>
+  <title>Settings &mdash; Claude Pending Board</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Settings</h1>
 
+  <div class="section-heading">Dismiss behavior</div>
+
   <div class="setting-group">
-    <label>Cooldown after dismiss (minutes)</label>
+    <label>
+      Cooldown after dismiss
+      <div class="hint">How long to stay silent</div>
+    </label>
     <input type="range" id="cooldownMinutes" min="1" max="120" value="15">
-    <span class="range-value" id="cooldownValue">15</span>
+    <span class="range-value" id="cooldownValue">15m</span>
   </div>
 
   <div class="setting-group">
-    <label>Reminding enabled</label>
+    <label>
+      Dismiss countdown
+      <div class="hint">Seconds before auto-applying the default</div>
+    </label>
+    <input type="range" id="dismissCountdown" min="2" max="10" value="5">
+    <span class="range-value" id="countdownValue">5s</span>
+  </div>
+
+  <div class="setting-group">
+    <label>
+      Skip confirmation
+      <div class="hint">Dismiss immediately, no countdown</div>
+    </label>
+    <input type="checkbox" id="skipConfirmation">
+  </div>
+
+  <div class="section-heading">Reminders</div>
+
+  <div class="setting-group">
+    <label>
+      Remind me again
+      <div class="hint">Wake the HUD for new items during cooldown</div>
+    </label>
     <input type="checkbox" id="remindingEnabled" checked>
   </div>
 
   <div class="setting-group">
-    <label>Auto-hide grace delay (seconds)</label>
+    <label>
+      Auto-hide grace
+      <div class="hint">Wait this long after the board empties</div>
+    </label>
     <input type="range" id="autoHideGrace" min="0" max="10" value="2">
-    <span class="range-value" id="graceValue">2</span>
+    <span class="range-value" id="graceValue">2s</span>
   </div>
 
-  <div class="setting-group">
-    <label>Dismiss countdown (seconds)</label>
-    <input type="range" id="dismissCountdown" min="2" max="10" value="5">
-    <span class="range-value" id="countdownValue">5</span>
-  </div>
-
-  <div class="setting-group">
-    <label>Skip dismiss confirmation</label>
-    <input type="checkbox" id="skipConfirmation">
-  </div>
+  <div class="section-heading">Terminal</div>
 
   <div class="setting-group">
     <label>Default terminal adapter</label>
@@ -46,13 +67,16 @@
   </div>
 
   <div class="setting-group">
-    <label>Debug logging</label>
+    <label>
+      Debug logging
+      <div class="hint">Verbose entries in hook-errors.log</div>
+    </label>
     <input type="checkbox" id="debugLogging">
   </div>
 
   <div class="actions">
-    <button id="saveBtn">Save</button>
-    <button id="resetPositionBtn">Reset HUD Position</button>
+    <button id="resetPositionBtn">Reset HUD position</button>
+    <button id="saveBtn">Save changes</button>
   </div>
 
   <div class="status" id="statusMsg"></div>

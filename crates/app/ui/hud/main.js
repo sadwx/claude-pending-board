@@ -2,22 +2,21 @@ const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const { getCurrentWindow } = window.__TAURI__.window;
 
-const entryList = document.getElementById("entryList");
-const emptyState = document.getElementById("emptyState");
-const countBadge = document.getElementById("countBadge");
-const statusDot = document.getElementById("statusDot");
-const dismissBtn = document.getElementById("dismissBtn");
-const settingsBtn = document.getElementById("settingsBtn");
-const dismissPanel = document.getElementById("dismissPanel");
-const dismissHeading = document.getElementById("dismissHeading");
-const dismissSubtitle = document.getElementById("dismissSubtitle");
-const btnWakeMe = document.getElementById("btnWakeMe");
-const btnStaySilent = document.getElementById("btnStaySilent");
-const wakeMeCountdown = document.getElementById("wakeMeCountdown");
+const entryList      = document.getElementById("entryList");
+const emptyState     = document.getElementById("emptyState");
+const countBadge     = document.getElementById("countBadge");
+const dismissBtn     = document.getElementById("dismissBtn");
+const settingsBtn    = document.getElementById("settingsBtn");
+const hudFooter      = document.getElementById("hudFooter");
+const footerSummary  = document.getElementById("footerSummary");
+
+const dismissPanel        = document.getElementById("dismissPanel");
+const dismissHeading      = document.getElementById("dismissHeading");
+const dismissSubtitle     = document.getElementById("dismissSubtitle");
+const btnWakeMe           = document.getElementById("btnWakeMe");
+const btnStaySilent       = document.getElementById("btnStaySilent");
+const wakeMeCountdown     = document.getElementById("wakeMeCountdown");
 const staySilentCountdown = document.getElementById("staySilentCountdown");
-const wakeMePill = document.getElementById("wakeMePill");
-const staySilentPill = document.getElementById("staySilentPill");
-const wakeMeCaptionTail = document.getElementById("wakeMeCaptionTail");
 
 let currentEntries = [];
 let dismissCountdownTimer = null;
@@ -41,75 +40,110 @@ function extractProjectName(cwd) {
   return parts[parts.length - 1] || parts[parts.length - 2] || "unknown";
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+function typeOf(entry) {
+  if (entry.state === "stale") return "stale";
+  return entry.notification_type === "permission_prompt" ? "permission" : "idle";
+}
+
+function chipLabelFor(type) {
+  return type === "permission" ? "perm" : type === "idle" ? "idle" : "stale";
+}
+
+function buildRow(entry) {
+  const type = typeOf(entry);
+
+  const row = document.createElement("div");
+  row.className = "entry-row " + type;
+  row.dataset.sessionId = entry.session_id;
+
+  const dot = document.createElement("div");
+  dot.className = "entry-dot";
+  row.appendChild(dot);
+
+  const content = document.createElement("div");
+  content.className = "entry-content";
+
+  const head = document.createElement("div");
+  head.className = "entry-head";
+
+  const chip = document.createElement("span");
+  chip.className = "entry-chip " + type;
+  chip.textContent = chipLabelFor(type);
+  head.appendChild(chip);
+
+  const project = document.createElement("span");
+  project.className = "entry-project";
+  project.textContent = extractProjectName(entry.cwd);
+  head.appendChild(project);
+
+  content.appendChild(head);
+
+  const message = document.createElement("div");
+  message.className = "entry-message";
+  message.textContent = entry.message || "";
+  content.appendChild(message);
+
+  row.appendChild(content);
+
+  const meta = document.createElement("div");
+  meta.className = "entry-meta";
+  const time = document.createElement("div");
+  time.className = "entry-time";
+  time.textContent = formatTime(entry.ts);
+  meta.appendChild(time);
+  row.appendChild(meta);
+
+  row.addEventListener("click", function () { onEntryClick(entry.session_id); });
+  return row;
+}
+
+function sortEntries(entries) {
+  const rank = function (e) {
+    if (e.state === "stale") return 2;
+    return e.notification_type === "permission_prompt" ? 0 : 1;
+  };
+  return entries.slice().sort(function (a, b) {
+    const r = rank(a) - rank(b);
+    if (r !== 0) return r;
+    return new Date(b.ts) - new Date(a.ts);
+  });
 }
 
 function renderEntries(entries) {
   currentEntries = entries;
-  const oldEntries = entryList.querySelectorAll(".section-label, .entry-row");
-  oldEntries.forEach(function(el) { el.remove(); });
+
+  const rows = entryList.querySelectorAll(".entry-row");
+  rows.forEach(function (el) { el.remove(); });
 
   if (entries.length === 0) {
     emptyState.style.display = "flex";
     countBadge.textContent = "0";
-    statusDot.classList.remove("has-items");
+    countBadge.classList.add("empty");
+    hudFooter.classList.add("hidden");
+    footerSummary.textContent = "";
     return;
   }
 
   emptyState.style.display = "none";
-  countBadge.textContent = entries.length.toString();
-  statusDot.classList.add("has-items");
+  countBadge.textContent = entries.length + " waiting";
+  countBadge.classList.remove("empty");
+  hudFooter.classList.remove("hidden");
 
-  var permissions = entries.filter(function(e) { return e.state === "live" && e.notification_type === "permission_prompt"; });
-  var idles = entries.filter(function(e) { return e.state === "live" && e.notification_type === "idle_prompt"; });
-  var stales = entries.filter(function(e) { return e.state === "stale"; });
+  const projects = new Set();
+  entries.forEach(function (e) { projects.add(extractProjectName(e.cwd)); });
+  footerSummary.textContent =
+    entries.length + " session" + (entries.length === 1 ? "" : "s") +
+    " \u00B7 " + projects.size + " project" + (projects.size === 1 ? "" : "s");
 
-  var groups = [
-    { label: "PERMISSION", entries: permissions, cls: "permission" },
-    { label: "IDLE", entries: idles, cls: "idle" },
-    { label: "STALE", entries: stales, cls: "stale" }
-  ];
-
-  for (var g = 0; g < groups.length; g++) {
-    var group = groups[g];
-    if (group.entries.length === 0) continue;
-
-    var label = document.createElement("div");
-    label.className = "section-label";
-    label.textContent = group.label;
-    entryList.appendChild(label);
-
-    for (var i = 0; i < group.entries.length; i++) {
-      var entry = group.entries[i];
-      var row = document.createElement("div");
-      row.className = "entry-row " + group.cls;
-      row.dataset.sessionId = entry.session_id;
-
-      var icon = group.cls === "permission" ? "\uD83D\uDD10" : group.cls === "idle" ? "\uD83D\uDCAC" : "\uD83D\uDC7B";
-
-      row.innerHTML =
-        '<span class="entry-icon">' + icon + '</span>' +
-        '<div class="entry-content">' +
-          '<div class="entry-project">' + escapeHtml(extractProjectName(entry.cwd)) + '</div>' +
-          '<div class="entry-message">' + escapeHtml(entry.message || "") + '</div>' +
-        '</div>' +
-        '<span class="entry-time">' + formatTime(entry.ts) + '</span>';
-
-      (function(sid) {
-        row.addEventListener("click", function() { onEntryClick(sid); });
-      })(entry.session_id);
-
-      entryList.appendChild(row);
-    }
+  const sorted = sortEntries(entries);
+  for (var i = 0; i < sorted.length; i++) {
+    entryList.appendChild(buildRow(sorted[i]));
   }
 }
 
 async function onEntryClick(sessionId) {
   try {
-    var result = await invoke("focus_entry", { sessionId: sessionId });
+    const result = await invoke("focus_entry", { sessionId: sessionId });
     console.log("focus result:", result);
   } catch (e) {
     console.error("focus error:", e);
@@ -119,38 +153,28 @@ async function onEntryClick(sessionId) {
 async function showDismissPanel() {
   if (isDismissPanelVisible) return;
 
-  var config = await invoke("get_config");
+  const config = await invoke("get_config");
   isDismissPanelVisible = true;
   entryList.style.display = "none";
+  hudFooter.classList.add("hidden");
   dismissPanel.classList.add("active");
 
-  dismissHeading.textContent = "Going silent for " + config.cooldown_minutes + " minutes";
-  dismissSubtitle.textContent = currentEntries.length + " items stay on board";
+  dismissHeading.textContent = "Hide for " + config.cooldown_minutes + " minutes?";
+  const n = currentEntries.length;
+  dismissSubtitle.textContent = n + " item" + (n === 1 ? "" : "s") + " will stay on the board";
 
-  // Update the caption under the Wake me button to reflect the actual
-  // configured cooldown (not the hardcoded 15).
-  if (wakeMeCaptionTail) {
-    wakeMeCaptionTail.textContent = "after " + config.cooldown_minutes + " minutes";
-  }
-
-  // Apply "default" styling + DEFAULT pill to whichever button matches the
-  // global Reminding setting.
   if (config.reminding_enabled) {
     btnWakeMe.classList.add("default");
     btnStaySilent.classList.remove("default");
-    wakeMePill.style.display = "";
-    staySilentPill.style.display = "none";
   } else {
     btnStaySilent.classList.add("default");
     btnWakeMe.classList.remove("default");
-    wakeMePill.style.display = "none";
-    staySilentPill.style.display = "";
   }
 
-  var remaining = config.dismiss_countdown_secs || 5;
+  let remaining = config.dismiss_countdown_secs || 5;
   updateCountdown(remaining, config.reminding_enabled);
 
-  dismissCountdownTimer = setInterval(function() {
+  dismissCountdownTimer = setInterval(function () {
     remaining--;
     updateCountdown(remaining, config.reminding_enabled);
     if (remaining <= 0) {
@@ -161,8 +185,6 @@ async function showDismissPanel() {
 }
 
 function updateCountdown(secs, isWakeMeDefault) {
-  // Only the default button shows the countdown, inline after the label.
-  // The element is a sibling span to btn-label, so we just append " · Ns".
   if (isWakeMeDefault) {
     wakeMeCountdown.textContent = " \u00B7 " + secs + "s";
     staySilentCountdown.textContent = "";
@@ -180,6 +202,9 @@ function hideDismissPanel() {
   }
   dismissPanel.classList.remove("active");
   entryList.style.display = "block";
+  if (currentEntries.length > 0) {
+    hudFooter.classList.remove("hidden");
+  }
 }
 
 async function commitDismiss(remindingOverride) {
@@ -191,21 +216,25 @@ async function commitDismiss(remindingOverride) {
   }
 }
 
-dismissBtn.addEventListener("click", function(e) {
+dismissBtn.addEventListener("click", function (e) {
   e.stopPropagation();
   showDismissPanel();
 });
 
-btnWakeMe.addEventListener("click", function() { commitDismiss(true); });
-btnStaySilent.addEventListener("click", function() { commitDismiss(false); });
+btnWakeMe.addEventListener("click", function () { commitDismiss(true); });
+btnStaySilent.addEventListener("click", function () { commitDismiss(false); });
 
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape" && isDismissPanelVisible) {
+document.addEventListener("keydown", function (e) {
+  if (!isDismissPanelVisible) return;
+  if (e.key === "Escape") {
     commitDismiss(null);
+  } else if (e.key === "Enter") {
+    if (btnWakeMe.classList.contains("default")) commitDismiss(true);
+    else commitDismiss(false);
   }
 });
 
-settingsBtn.addEventListener("click", async function() {
+settingsBtn.addEventListener("click", async function () {
   try {
     await invoke("open_settings");
   } catch (e) {
@@ -215,26 +244,33 @@ settingsBtn.addEventListener("click", async function() {
 
 // Manual drag fallback: data-tauri-drag-region is unreliable on macOS when
 // the window is decorations(false) + always-on-top. Explicit startDragging
-// on header mousedown works consistently.
-document.querySelector(".header").addEventListener("mousedown", function(e) {
+// on header mousedown works consistently across platforms.
+document.querySelector(".header").addEventListener("mousedown", function (e) {
   if (e.button !== 0) return;
   if (e.target.closest("button")) return;
-  getCurrentWindow().startDragging().catch(function(err) {
+  getCurrentWindow().startDragging().catch(function (err) {
     console.error("startDragging error:", err);
   });
 });
 
-listen("entries-updated", function(event) {
+listen("entries-updated", function (event) {
   renderEntries(event.payload);
 });
 
-listen("badge-count", function(event) {
-  countBadge.textContent = event.payload.toString();
+listen("badge-count", function (event) {
+  const n = event.payload;
+  if (n > 0) {
+    countBadge.textContent = n + " waiting";
+    countBadge.classList.remove("empty");
+  } else {
+    countBadge.textContent = "0";
+    countBadge.classList.add("empty");
+  }
 });
 
-(async function() {
+(async function () {
   try {
-    var entries = await invoke("list_entries");
+    const entries = await invoke("list_entries");
     renderEntries(entries);
   } catch (e) {
     console.error("initial load error:", e);

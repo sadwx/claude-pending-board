@@ -7,45 +7,68 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="header" data-tauri-drag-region="deep">
-    <div class="status-dot" id="statusDot"></div>
-    <span class="title">Claude Pending</span>
-    <span class="count-badge" id="countBadge">0</span>
-    <button class="header-btn" id="settingsBtn" title="Settings" data-tauri-drag-region="false">&#9881;</button>
-    <button class="header-btn dismiss-x" id="dismissBtn" title="Dismiss" data-tauri-drag-region="false">&#10005;</button>
+  <div class="header" data-tauri-drag-region>
+    <div class="logo-glyph" data-tauri-drag-region>C</div>
+    <span class="title" data-tauri-drag-region>Pending Board</span>
+    <span class="count-badge empty" id="countBadge" data-tauri-drag-region>0</span>
+    <button class="header-btn" id="settingsBtn" title="Settings" data-tauri-drag-region="false" aria-label="Settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+    <button class="header-btn" id="dismissBtn" title="Dismiss" data-tauri-drag-region="false" aria-label="Dismiss">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"></path>
+      </svg>
+    </button>
   </div>
 
   <div class="entry-list" id="entryList">
     <div class="empty-state" id="emptyState">
-      <div class="emoji">&#10003;</div>
-      <div>No pending items</div>
+      <div class="empty-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"></path>
+        </svg>
+      </div>
+      <div class="empty-title">All caught up</div>
+      <div class="empty-subtitle">No sessions waiting for you.</div>
     </div>
   </div>
 
+  <div class="hud-footer hidden" id="hudFooter">
+    <span><span class="kbd">&#8629;</span> focus &nbsp; <span class="kbd">&#9003;</span> clear</span>
+    <span id="footerSummary"></span>
+  </div>
+
   <div class="dismiss-panel" id="dismissPanel">
-    <div class="heading" id="dismissHeading">Going silent for 15 minutes</div>
-    <div class="subtitle" id="dismissSubtitle">0 items stay on board</div>
+    <div class="dismiss-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path>
+      </svg>
+    </div>
+    <div class="heading" id="dismissHeading">Hide for 15 minutes?</div>
+    <div class="subtitle" id="dismissSubtitle">0 items will stay on the board</div>
+
     <div class="dismiss-buttons">
-      <div>
-        <button class="dismiss-btn" id="btnWakeMe">
-          <span class="pill" id="wakeMePill" style="display:none">DEFAULT</span>
-          <div class="btn-icon">&#128276;</div>
-          <div class="btn-body">
-            <span class="btn-label">Wake me</span><span class="btn-countdown" id="wakeMeCountdown"></span>
-          </div>
-        </button>
-        <div class="dismiss-caption">Choose this to wake me<br><span id="wakeMeCaptionTail">after 15 minutes</span></div>
-      </div>
-      <div>
-        <button class="dismiss-btn" id="btnStaySilent">
-          <span class="pill" id="staySilentPill" style="display:none">DEFAULT</span>
-          <div class="btn-icon muted">&#128277;</div>
-          <div class="btn-body">
-            <span class="btn-label">Stay silent</span><span class="btn-countdown" id="staySilentCountdown"></span>
-          </div>
-        </button>
-        <div class="dismiss-caption">Choose this to stay silent</div>
-      </div>
+      <button class="dismiss-btn" id="btnWakeMe">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="btn-label">Wake me</span><span class="btn-countdown" id="wakeMeCountdown"></span>
+      </button>
+      <button class="dismiss-btn" id="btnStaySilent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 1l22 22"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path>
+        </svg>
+        <span class="btn-label">Stay silent</span><span class="btn-countdown" id="staySilentCountdown"></span>
+      </button>
+    </div>
+
+    <div class="dismiss-footer-hint">
+      <span class="enter">&#8629;</span> confirm &nbsp;&middot;&nbsp; <span class="esc">esc</span> cancel
     </div>
   </div>
 
