@@ -93,7 +93,7 @@ pub fn manual_open(app: AppHandle, state: State<SharedState>) -> Result<(), Stri
 
     if action == VisibilityAction::ShowHud {
         if let Some(window) = app.get_webview_window("hud") {
-            let _ = window.show();
+            crate::hud_show::show_without_activation(&window);
             let _ = app.emit("entries-updated", &entries);
         }
     }

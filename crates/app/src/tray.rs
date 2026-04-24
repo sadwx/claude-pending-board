@@ -29,7 +29,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
                 if action == claude_pending_board_core::visibility::VisibilityAction::ShowHud {
                     if let Some(window) = app.get_webview_window("hud") {
-                        let _ = window.show();
+                        crate::hud_show::show_without_activation(&window);
                         let _ = tauri::Emitter::emit(app, "entries-updated", &entries);
                     }
                 }
@@ -62,7 +62,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
                 if action == claude_pending_board_core::visibility::VisibilityAction::ShowHud {
                     if let Some(window) = app.get_webview_window("hud") {
-                        let _ = window.show();
+                        crate::hud_show::show_without_activation(&window);
                         let _ = tauri::Emitter::emit(app, "entries-updated", &entries);
                     }
                 }
