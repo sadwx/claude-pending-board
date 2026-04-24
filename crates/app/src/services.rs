@@ -139,7 +139,7 @@ fn apply_visibility_action(app: &AppHandle, action: &VisibilityAction) {
     match action {
         VisibilityAction::ShowHud => {
             if let Some(window) = app.get_webview_window("hud") {
-                let _ = window.show();
+                crate::hud_show::show_without_activation(&window);
             }
         }
         VisibilityAction::HideHud => {

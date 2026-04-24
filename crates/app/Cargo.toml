@@ -17,5 +17,14 @@ serde_json = { workspace = true }
 dirs-next = "2"
 chrono = { workspace = true }
 
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.5"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
