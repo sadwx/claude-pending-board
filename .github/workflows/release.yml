@@ -12,10 +12,10 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
             args: "--target universal-apple-darwin"
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+            rust-targets: x86_64-pc-windows-msvc
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -24,7 +24,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rust-targets }}
 
       - uses: Swatinem/rust-cache@v2
 
