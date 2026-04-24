@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "claude-pending-board",
+  "owner": {
+    "name": "sadwx",
+    "url": "https://github.com/sadwx"
+  },
+  "plugins": [
+    {
+      "name": "claude-pending-board",
+      "source": "./plugin",
+      "description": "Registers Claude Code hooks that feed the Claude Pending Board tray app, surfacing every waiting Claude session in one floating HUD.",
+      "version": "0.1.0"
+    }
+  ]
+}

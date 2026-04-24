@@ -190,3 +190,15 @@ pub fn apply_config(state: State<SharedState>, config: Config) -> Result<(), Str
     s.config = config;
     Ok(())
 }
+
+#[tauri::command]
+pub fn check_hooks_installed() -> crate::plugin_install::HookStatus {
+    crate::plugin_install::detect()
+}
+
+#[tauri::command]
+pub async fn install_plugin() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(crate::plugin_install::install)
+        .await
+        .map_err(|e| format!("install task failed: {e}"))?
+}

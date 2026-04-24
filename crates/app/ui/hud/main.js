@@ -18,9 +18,19 @@ const btnStaySilent       = document.getElementById("btnStaySilent");
 const wakeMeCountdown     = document.getElementById("wakeMeCountdown");
 const staySilentCountdown = document.getElementById("staySilentCountdown");
 
+const setupCard      = document.getElementById("setupCard");
+const setupTitle     = document.getElementById("setupTitle");
+const setupSubtitle  = document.getElementById("setupSubtitle");
+const setupInstallBtn = document.getElementById("setupInstallBtn");
+const setupManualBtn  = document.getElementById("setupManualBtn");
+const setupError     = document.getElementById("setupError");
+const setupManual    = document.getElementById("setupManual");
+
 let currentEntries = [];
 let dismissCountdownTimer = null;
 let isDismissPanelVisible = false;
+// One of "installed", "not_installed", "cli_missing", or null while unknown.
+let hookStatus = null;
 
 function formatTime(ts) {
   const d = new Date(ts);
@@ -114,6 +124,23 @@ function renderEntries(entries) {
 
   const rows = entryList.querySelectorAll(".entry-row");
   rows.forEach(function (el) { el.remove(); });
+
+  // If we have entries, the pipeline is clearly working — always show them
+  // (and self-heal hookStatus if it's stale).
+  if (entries.length > 0 && hookStatus !== "installed") {
+    hookStatus = "installed";
+  }
+  setupCard.classList.add("hidden");
+
+  if (entries.length === 0 && hookStatus && hookStatus !== "installed") {
+    emptyState.style.display = "none";
+    setupCard.classList.remove("hidden");
+    countBadge.textContent = "0";
+    countBadge.classList.add("empty");
+    hudFooter.classList.add("hidden");
+    footerSummary.textContent = "";
+    return;
+  }
 
   if (entries.length === 0) {
     emptyState.style.display = "flex";
@@ -254,6 +281,12 @@ document.querySelector(".header").addEventListener("mousedown", function (e) {
 });
 
 listen("entries-updated", function (event) {
+  // If ops are reaching the store, the hook pipeline is demonstrably working.
+  // Self-heal the status so the setup card stops showing.
+  if (event.payload && event.payload.length > 0 && hookStatus !== "installed") {
+    hookStatus = "installed";
+    setupCard.classList.add("hidden");
+  }
   renderEntries(event.payload);
 });
 
@@ -268,9 +301,53 @@ listen("badge-count", function (event) {
   }
 });
 
+async function refreshHookStatus() {
+  try {
+    hookStatus = await invoke("check_hooks_installed");
+  } catch (e) {
+    console.error("check_hooks_installed error:", e);
+    hookStatus = null;
+  }
+  if (hookStatus === "cli_missing") {
+    setupTitle.textContent = "Claude Code not found";
+    setupSubtitle.textContent = "The `claude` CLI isn't in PATH. Install Claude Code, then reopen this window.";
+    setupInstallBtn.disabled = true;
+  } else {
+    setupTitle.textContent = "Hooks not installed";
+    setupSubtitle.textContent = "The tray can't surface pending sessions until the Claude Code plugin is installed.";
+    setupInstallBtn.disabled = false;
+  }
+  renderEntries(currentEntries);
+}
+
+setupInstallBtn.addEventListener("click", async function () {
+  setupInstallBtn.disabled = true;
+  setupManualBtn.disabled = true;
+  setupError.classList.add("hidden");
+  const originalLabel = setupInstallBtn.querySelector(".btn-label").textContent;
+  setupInstallBtn.querySelector(".btn-label").textContent = "Installing…";
+  try {
+    await invoke("install_plugin");
+    await refreshHookStatus();
+  } catch (e) {
+    console.error("install_plugin error:", e);
+    setupError.textContent = String(e);
+    setupError.classList.remove("hidden");
+  } finally {
+    setupInstallBtn.querySelector(".btn-label").textContent = originalLabel;
+    setupInstallBtn.disabled = (hookStatus === "cli_missing");
+    setupManualBtn.disabled = false;
+  }
+});
+
+setupManualBtn.addEventListener("click", function () {
+  setupManual.classList.toggle("hidden");
+});
+
 (async function () {
   try {
     const entries = await invoke("list_entries");
+    await refreshHookStatus();
     renderEntries(entries);
   } catch (e) {
     console.error("initial load error:", e);
