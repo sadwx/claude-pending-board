@@ -15,7 +15,7 @@ Claude Pending Board watches every session and pushes a single floating window w
 
 ## Status
 
-**Alpha (v0.1.0 in progress).** Core library, terminal adapters, hook scripts, and the Tauri app with HUD + Settings + tray are all working end-to-end. Phase 4 finishes the Claude Code plugin, CI, and first public release.
+**Alpha (v0.1.0 pre-release).** First tagged release is available on the [releases page](https://github.com/sadwx/claude-pending-board/releases). Binaries are unsigned during alpha — SmartScreen / Gatekeeper warnings are expected. See [`INSTALL.md`](./INSTALL.md) for install notes.
 
 ## How it works (high level)
 
@@ -52,7 +52,16 @@ Windows Terminal is explicitly **not supported** as a focus target because its p
 
 ## Installation
 
-See [`INSTALL.md`](./INSTALL.md).
+Two steps:
+
+1. Download the MSI (Windows) or DMG (macOS) from the [releases page](https://github.com/sadwx/claude-pending-board/releases) and install. Launch the app — a pink "C" icon appears in the tray.
+2. Click the tray icon to open the HUD. On the first-run card, click **[Install plugin]** — the app shells out to `claude plugin` to register the hooks. Alternatively, run from any terminal:
+   ```bash
+   claude plugin marketplace add sadwx/claude-pending-board
+   claude plugin install claude-pending-board@claude-pending-board
+   ```
+
+See [`INSTALL.md`](./INSTALL.md) for SmartScreen / Gatekeeper notes, verification, troubleshooting, and build-from-source instructions.
 
 ## Documentation
 
@@ -61,7 +70,7 @@ See [`INSTALL.md`](./INSTALL.md).
 - [`openspec/changes/add-claude-pending-board/design.md`](./openspec/changes/add-claude-pending-board/design.md) — technical design
 - [`openspec/changes/add-claude-pending-board/specs/pending-board/spec.md`](./openspec/changes/add-claude-pending-board/specs/pending-board/spec.md) — requirements and scenarios
 - [`openspec/changes/add-claude-pending-board/tasks.md`](./openspec/changes/add-claude-pending-board/tasks.md) — implementation checklist
-- `docs/release-checklist.md` — manual UX checklist per release (once written)
+- [`docs/release-checklist.md`](./docs/release-checklist.md) — manual UX checklist per release
 
 ## Contributing
 
