@@ -229,6 +229,116 @@ html, body {
 .empty-subtitle { font-size: 11px; text-align: center; line-height: 1.5; }
 .empty-subtitle .kbd { font-family: var(--mono); color: var(--drac-purple); }
 
+/* Setup card (first-run, plugin not installed) */
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: 10px;
+  padding: 22px 20px 16px;
+  text-align: center;
+  color: var(--drac-subtext);
+}
+.setup-card.hidden { display: none; }
+
+.setup-icon {
+  width: 44px; height: 44px; border-radius: 22px;
+  background: rgba(241, 250, 140, 0.09);
+  border: 1px solid rgba(241, 250, 140, 0.25);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--drac-yellow);
+  flex-shrink: 0;
+}
+.setup-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--drac-fg);
+}
+.setup-subtitle {
+  font-size: 11px; line-height: 1.5;
+  color: var(--drac-comment);
+  max-width: 300px;
+}
+.setup-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.setup-btn {
+  font: inherit;
+  font-size: 12px; font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  background: var(--drac-current);
+  color: var(--drac-fg);
+  transition: background 0.12s, border-color 0.12s;
+}
+.setup-btn:hover:not(:disabled) {
+  background: var(--drac-mantle);
+  border-color: var(--drac-comment);
+}
+.setup-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.setup-btn.primary {
+  background: var(--accent-gradient);
+  border-color: transparent;
+  color: var(--drac-bg);
+  font-weight: 600;
+}
+.setup-btn.primary:hover:not(:disabled) {
+  /* Explicitly redeclare `background` and `border-color` — otherwise the
+     shared `.setup-btn:hover` rule above sets the dark mantle background
+     and our dark label becomes unreadable. Brighten the gradient slightly
+     for visual feedback instead of `filter: brightness` (which dims the
+     dark label). */
+  background: linear-gradient(135deg, #ffa5d7 0%, #d0b2fb 100%);
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(189, 147, 249, 0.35);
+}
+.setup-btn .btn-label { pointer-events: none; }
+
+.setup-error {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--drac-red);
+  background: rgba(255, 85, 85, 0.1);
+  border: 1px solid rgba(255, 85, 85, 0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-width: 320px;
+  text-align: left;
+  font-family: var(--mono);
+  word-break: break-word;
+}
+.setup-error.hidden { display: none; }
+
+.setup-manual {
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--drac-subtext);
+  text-align: left;
+  max-width: 320px;
+}
+.setup-manual.hidden { display: none; }
+.setup-manual code {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--drac-mantle);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  color: var(--drac-cyan);
+  user-select: text;
+  margin: 2px 0;
+}
+
 /* Footer */
 .hud-footer {
   height: 28px;

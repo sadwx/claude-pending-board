@@ -2,6 +2,7 @@
 
 mod commands;
 mod hud_show;
+mod plugin_install;
 mod services;
 mod state;
 mod tray;
@@ -79,6 +80,8 @@ fn main() {
             commands::reset_hud_position,
             commands::get_config,
             commands::apply_config,
+            commands::check_hooks_installed,
+            commands::install_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -34,6 +34,32 @@
       <div class="empty-title">All caught up</div>
       <div class="empty-subtitle">No sessions waiting for you.</div>
     </div>
+
+    <div class="setup-card hidden" id="setupCard">
+      <div class="setup-icon" id="setupIcon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 9v4"></path>
+          <path d="M12 17h.01"></path>
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        </svg>
+      </div>
+      <div class="setup-title" id="setupTitle">Hooks not installed</div>
+      <div class="setup-subtitle" id="setupSubtitle">The tray can't surface pending sessions until the Claude Code plugin is installed.</div>
+      <div class="setup-buttons">
+        <button class="setup-btn primary" id="setupInstallBtn">
+          <span class="btn-label">Install plugin</span>
+        </button>
+        <button class="setup-btn" id="setupManualBtn">
+          <span class="btn-label">Do it manually</span>
+        </button>
+      </div>
+      <div class="setup-error hidden" id="setupError"></div>
+      <div class="setup-manual hidden" id="setupManual">
+        Run in any Claude Code session:<br>
+        <code>/plugin marketplace add github:sadwx/claude-pending-board</code><br>
+        <code>/plugin install claude-pending-board@claude-pending-board</code>
+      </div>
+    </div>
   </div>
 
   <div class="hud-footer hidden" id="hudFooter">
