@@ -1,12 +1,22 @@
 use crate::state::SharedState;
-use chrono::Duration;
+use chrono::{Duration, Utc};
 use claude_pending_board_core::board::compaction;
 use claude_pending_board_core::board::watcher::BoardWatcher;
 use claude_pending_board_core::reaper::{self, RealProcessTable, RealSessionFiles};
+use claude_pending_board_core::types::{EntryState, Op};
 use claude_pending_board_core::visibility::{VisibilityAction, VisibilityEvent};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
+
+/// How long a stale entry survives before we emit an automatic clear op for
+/// it. Chosen short so orphaned entries (e.g. from sessions the user abandoned
+/// and restarted elsewhere with a different session_id) stop cluttering the
+/// HUD within the hour.
+const STALE_TTL: Duration = Duration::hours(1);
+
+/// How often the stale cleanup loop sweeps the store.
+const STALE_CLEANUP_INTERVAL_SECS: u64 = 10 * 60;
 
 fn board_path() -> PathBuf {
     let home = dirs_next::home_dir().unwrap_or_else(|| PathBuf::from("."));
@@ -20,7 +30,7 @@ pub fn boot(app: &AppHandle, state: SharedState) {
     let board_file = board_path();
 
     if board_file.exists() {
-        if let Err(e) = compaction::compact(&board_file, Duration::hours(24)) {
+        if let Err(e) = compaction::compact(&board_file, STALE_TTL) {
             tracing::warn!(error = %e, "startup compaction failed");
         }
     }
@@ -48,9 +58,14 @@ pub fn boot(app: &AppHandle, state: SharedState) {
     });
 
     let app_for_tick = app_handle;
-    let state_for_tick = state;
+    let state_for_tick = state.clone();
     tauri::async_runtime::spawn(async move {
         visibility_tick_loop(app_for_tick, state_for_tick).await;
+    });
+
+    let state_for_cleanup = state;
+    tauri::async_runtime::spawn(async move {
+        stale_cleanup_loop(state_for_cleanup).await;
     });
 }
 
@@ -132,6 +147,66 @@ async fn visibility_tick_loop(app: AppHandle, state: SharedState) {
         };
 
         apply_visibility_action(&app, &action);
+    }
+}
+
+/// Periodically emit `clear` ops for stale entries older than [`STALE_TTL`].
+///
+/// Rationale: a stale entry is only cleared by a matching `UserPromptSubmit`
+/// op against the same `session_id`. If the user never resumes that session
+/// (e.g. they moved on to a different terminal / session), the entry is
+/// orphaned. We don't want stale entries accumulating forever, so this loop
+/// writes synthetic `clear` ops through the normal board.jsonl pipeline —
+/// the watcher picks them up, store removes the entries, HUD updates.
+async fn stale_cleanup_loop(state: SharedState) {
+    let board_file = board_path();
+
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(STALE_CLEANUP_INTERVAL_SECS)).await;
+
+        let now = Utc::now();
+        let to_clear: Vec<String> = {
+            let s = state.lock().unwrap();
+            s.entries()
+                .iter()
+                .filter(|entry| {
+                    entry.state == EntryState::Stale
+                        && entry
+                            .stale_since
+                            .map(|ts| now.signed_duration_since(ts) > STALE_TTL)
+                            .unwrap_or(false)
+                })
+                .map(|e| e.session_id.clone())
+                .collect()
+        };
+
+        if to_clear.is_empty() {
+            continue;
+        }
+
+        match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&board_file)
+        {
+            Ok(mut file) => {
+                use std::io::Write;
+                for sid in &to_clear {
+                    let op = Op::Clear {
+                        ts: now,
+                        session_id: sid.clone(),
+                        reason: "stale_expired".to_string(),
+                    };
+                    if let Ok(line) = serde_json::to_string(&op) {
+                        let _ = writeln!(file, "{}", line);
+                    }
+                }
+                tracing::info!(count = to_clear.len(), "emitted stale-expired clear ops");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "stale cleanup: failed to open board file");
+            }
+        }
     }
 }
 
