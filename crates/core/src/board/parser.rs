@@ -71,6 +71,7 @@ pub fn parse_lines(text: &str) -> (Vec<Op>, usize) {
 mod tests {
     use super::*;
     use crate::types::NotificationType;
+    use std::path::PathBuf;
 
     #[test]
     fn test_parse_valid_add_op() {
@@ -175,5 +176,49 @@ mod tests {
     fn test_parse_line_with_extra_fields_is_forward_compatible() {
         let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/tmp","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m","new_field":"ignored"}"#;
         assert!(parse_line(line).is_ok());
+    }
+
+    #[test]
+    fn test_parse_add_op_without_wsl_distro() {
+        // Pre-WSL boards omit the field entirely; deserializes to None.
+        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/tmp","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m"}"#;
+        let op = parse_line(line).unwrap();
+        match op {
+            Op::Add { wsl_distro, .. } => assert_eq!(wsl_distro, None),
+            _ => panic!("expected Add op"),
+        }
+    }
+
+    #[test]
+    fn test_parse_add_op_with_wsl_distro() {
+        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/home/simon/project","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m","wsl_distro":"Ubuntu-24.04"}"#;
+        let op = parse_line(line).unwrap();
+        match op {
+            Op::Add { wsl_distro, .. } => assert_eq!(wsl_distro.as_deref(), Some("Ubuntu-24.04")),
+            _ => panic!("expected Add op"),
+        }
+    }
+
+    #[test]
+    fn test_serialize_add_op_omits_none_wsl_distro() {
+        // Round-trip: serializing an Add op with wsl_distro = None must NOT
+        // emit the field at all (so v0.1.x boards remain byte-identical).
+        let op = Op::Add {
+            ts: "2026-04-16T10:00:00Z".parse().unwrap(),
+            session_id: "a".to_string(),
+            cwd: PathBuf::from("/tmp"),
+            claude_pid: 1,
+            terminal_pid: None,
+            transcript_path: PathBuf::from("/tmp/t"),
+            notification_type: NotificationType::PermissionPrompt,
+            message: "m".to_string(),
+            wsl_distro: None,
+        };
+        let line = serde_json::to_string(&op).unwrap();
+        assert!(
+            !line.contains("wsl_distro"),
+            "wsl_distro field should be omitted when None: {}",
+            line
+        );
     }
 }

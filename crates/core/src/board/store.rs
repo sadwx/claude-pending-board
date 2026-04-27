@@ -24,6 +24,7 @@ impl StateStore {
                 transcript_path,
                 notification_type,
                 message,
+                wsl_distro,
             } => {
                 self.entries.insert(
                     session_id.clone(),
@@ -38,6 +39,7 @@ impl StateStore {
                         message,
                         state: EntryState::Live,
                         stale_since: None,
+                        wsl_distro,
                     },
                 );
                 true
@@ -147,6 +149,7 @@ mod tests {
             transcript_path: PathBuf::from("/tmp/transcript.jsonl"),
             notification_type,
             message: "test".to_string(),
+            wsl_distro: None,
         }
     }
 
