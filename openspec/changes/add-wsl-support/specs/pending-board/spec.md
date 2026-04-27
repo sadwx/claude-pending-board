@@ -1,0 +1,108 @@
+# pending-board (WSL deltas)
+
+This change document expresses the deltas that `add-wsl-support` introduces on top of the working spec at `openspec/specs/pending-board/spec.md`.
+
+## MODIFIED Requirements
+
+### Requirement: Live / stale liveness tracking
+
+The system SHALL continuously verify that every live entry on the board corresponds to a still-running Claude Code process, and promote dead entries to the `stale` state. Entries that originated inside WSL SHALL be treated as live without consulting the Windows process table, because their `claude_pid` belongs to a different OS namespace.
+
+#### Scenario: Claude Code process still alive
+
+- **WHEN** the Reaper runs its periodic check (every 30 seconds) on a live entry with `claude_pid = P` and `wsl_distro = None`
+- **AND** process `P` exists in the OS process table
+- **AND** `~/.claude/sessions/P.json` exists with a `sessionId` matching the entry's `session_id`
+- **THEN** the entry SHALL remain in the `live` state
+
+#### Scenario: Process died — entry promoted to stale
+
+- **WHEN** the Reaper runs on a live entry with `wsl_distro = None`
+- **AND** process `claude_pid` no longer exists in the process table
+- **THEN** the Reaper SHALL append `{"op":"stale","ts":<iso>,"session_id":<id>,"reason":"pid_dead"}` to `board.jsonl`
+- **AND** mutate the entry's state to `stale` in the `StateStore`
+
+#### Scenario: PID recycled to an unrelated process
+
+- **WHEN** the Reaper runs on a live entry with `wsl_distro = None`
+- **AND** `claude_pid = P` is alive but `~/.claude/sessions/P.json` does not exist or its `sessionId` does not match the entry
+- **THEN** the Reaper SHALL write a `stale` op with `reason = "session_file_missing"` or `"mismatch"` respectively and mutate the entry
+
+#### Scenario: WSL-origin entry is trusted live
+
+- **WHEN** the Reaper runs on a live entry with `wsl_distro = Some(<distro_name>)`
+- **THEN** the Reaper SHALL skip the Windows-side process and session-file checks for that entry
+- **AND** the entry SHALL remain `live` until the Claude Code session in WSL emits a clearing op (`UserPromptSubmit` or `Stop`), the user dismisses it manually, or the periodic stale cleanup loop expires it after the configured TTL
+
+### Requirement: Click to focus live terminal pane
+
+The system SHALL focus the exact terminal pane owning a live entry when the user clicks that entry. WSL-origin entries cannot be focused via the Windows-side adapters (their `terminal_pid` refers to a process inside WSL); a click on a WSL live entry SHALL fall through to the resume path described in *Click to resume stale entry*.
+
+#### Scenario: WezTerm pane is focused
+
+- **WHEN** the user clicks a live entry with `wsl_distro = None` whose ancestor walk from `claude_pid` matches a `wezterm-gui` process
+- **THEN** the `WezTermAdapter` SHALL call `wezterm cli list --format json`, find the pane whose `pid` matches an ancestor in the walk, and call `wezterm cli activate-pane --pane-id <matched>`
+- **AND** the WezTerm top-level window SHALL be brought to the foreground
+
+#### Scenario: iTerm2 session is focused
+
+- **WHEN** the user clicks a live entry on macOS with `wsl_distro = None` whose ancestor walk matches an `iTerm2` process
+- **THEN** the `ITerm2Adapter` SHALL activate iTerm2 via `osascript` and select the session whose `tty` matches the ancestor walk's terminal tty
+
+#### Scenario: WSL live entry click
+
+- **WHEN** the user clicks a live entry with `wsl_distro = Some(<distro>)`
+- **THEN** the click SHALL be routed to the resume path (the same path as a stale-entry click) because focus across the WSL/Windows boundary is not feasible
+
+#### Scenario: No adapter matched
+
+- **WHEN** the ancestor walk on a non-WSL entry returns no known terminal binary
+- **THEN** the click SHALL fall through to the user's default adapter via `spawn_resume` rather than failing silently
+
+### Requirement: Click to resume stale entry
+
+The system SHALL resume a stale session in a new terminal tab by invoking `claude --resume <session_id>` via the user's default adapter. For entries that originated inside WSL, the resume path SHALL launch Claude inside the originating WSL distro and SHALL set the new tab's working directory to the corresponding `\\wsl$\<distro>\<linux-cwd>` UNC path so the tab opens at the right project.
+
+#### Scenario: Stale WezTerm entry resumed (non-WSL)
+
+- **WHEN** the user clicks a stale entry with `wsl_distro = None` and the default adapter is WezTerm
+- **THEN** the adapter SHALL run `wezterm cli spawn --cwd <original_cwd> -- claude --resume <session_id>`
+
+#### Scenario: Stale iTerm2 entry resumed (non-WSL)
+
+- **WHEN** the user clicks a stale entry on macOS with `wsl_distro = None` and the default adapter is iTerm2
+- **THEN** the adapter SHALL invoke `osascript` to run `tell application "iTerm2" to tell current window to create tab with default profile command "cd <cwd> && claude --resume <session_id>"`
+
+#### Scenario: Stale entry click on a WSL-origin session
+
+- **WHEN** the user clicks a stale entry with `wsl_distro = Some("Ubuntu-24.04")` and `cwd = "/home/simon/project"`
+- **THEN** the WezTerm adapter SHALL spawn a new tab with working directory `\\wsl$\Ubuntu-24.04\home\simon\project`
+- **AND** the tab SHALL run `wsl.exe -d Ubuntu-24.04 -e claude --resume <session_id>` so the resumed Claude session lives inside the originating distro
+
+## ADDED Requirements
+
+### Requirement: WSL distro identification on board entries
+
+The system SHALL record the originating WSL distro on every entry produced by a Claude Code session running inside WSL, so downstream consumers (reaper, adapters) can route the entry correctly across the WSL/Windows boundary.
+
+#### Scenario: Hook fires inside WSL
+
+- **WHEN** the bash hook script (`pending_hook.sh`) handles a `Notification` event
+- **AND** the environment variable `WSL_DISTRO_NAME` is non-empty
+- **THEN** the appended `add` op SHALL include a string field `"wsl_distro": "<name>"` matching the value of `$WSL_DISTRO_NAME`
+
+#### Scenario: Hook fires on macOS
+
+- **WHEN** the bash hook script handles a `Notification` event
+- **AND** `WSL_DISTRO_NAME` is unset or empty
+- **THEN** the `add` op SHALL omit the `wsl_distro` field entirely (not write `null`, not write an empty string)
+
+### Requirement: Plugin manifest covers Linux platforms
+
+The Claude Code plugin SHALL register its bash hook script for the `linux` platform in addition to `windows` and `darwin`, so that running `claude plugin install claude-pending-board@claude-pending-board` inside WSL registers all three hooks without manual `settings.json` editing.
+
+#### Scenario: Plugin install from inside WSL
+
+- **WHEN** a user runs `claude plugin marketplace add sadwx/claude-pending-board` followed by `claude plugin install claude-pending-board@claude-pending-board` inside a WSL distro
+- **THEN** Claude Code SHALL register the bash variant of `pending_hook.sh` for the `Notification`, `UserPromptSubmit`, and `Stop` events under the user's `~/.claude/settings.json` (or its plugin equivalent)
+- **AND** subsequent Claude sessions inside that WSL distro SHALL fire the hook on every event without further configuration
