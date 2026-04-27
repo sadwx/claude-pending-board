@@ -10,7 +10,7 @@
       "name": "claude-pending-board",
       "source": "./plugin",
       "description": "Registers Claude Code hooks that feed the Claude Pending Board tray app, surfacing every waiting Claude session in one floating HUD.",
-      "version": "0.1.1"
+      "version": "0.1.2"
     }
   ]
 }
