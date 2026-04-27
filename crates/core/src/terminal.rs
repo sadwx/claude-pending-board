@@ -21,7 +21,20 @@ pub trait TerminalAdapter: Send + Sync {
     fn focus_pane(&self, terminal_match: &TerminalMatch) -> Result<(), AdapterError>;
 
     /// Spawn a new terminal tab running `claude --resume <session_id>` in `cwd`.
-    fn spawn_resume(&self, cwd: &Path, session_id: &str) -> Result<(), AdapterError>;
+    ///
+    /// When `wsl_distro` is `Some(<name>)`, the entry originated inside WSL.
+    /// Implementations MUST translate the Linux `cwd` to a Windows UNC path
+    /// (`\\wsl$\<distro>\…`) for the spawn working directory and launch the
+    /// resume command via `wsl.exe -d <distro> -e claude --resume <session_id>`
+    /// rather than running `claude --resume` on the host directly. Adapters
+    /// that don't support WSL (e.g. iTerm2 on macOS) MAY ignore the field —
+    /// in practice it's always `None` on macOS.
+    fn spawn_resume(
+        &self,
+        cwd: &Path,
+        session_id: &str,
+        wsl_distro: Option<&str>,
+    ) -> Result<(), AdapterError>;
 }
 
 #[derive(Debug, thiserror::Error)]

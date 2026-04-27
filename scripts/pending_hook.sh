@@ -105,8 +105,16 @@ except:
             local escaped_message
             escaped_message=$(printf '%s' "$message" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
 
-            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"}\n' \
-                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" \
+            # When running inside WSL, tag the entry with the distro name so
+            # the Windows-side reaper / WezTerm adapter can route correctly.
+            # Field is omitted entirely on macOS (and any non-WSL Linux).
+            local wsl_distro_field=""
+            if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+                wsl_distro_field=$(printf ',"wsl_distro":"%s"' "$WSL_DISTRO_NAME")
+            fi
+
+            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"%s}\n' \
+                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" "$wsl_distro_field" \
                 >> "$BOARD_FILE"
             ;;
 

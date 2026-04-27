@@ -143,11 +143,28 @@ impl TerminalAdapter for WezTermAdapter {
         Self::activate_pane(pane_id)
     }
 
-    fn spawn_resume(&self, cwd: &Path, session_id: &str) -> Result<(), AdapterError> {
+    fn spawn_resume(
+        &self,
+        cwd: &Path,
+        session_id: &str,
+        wsl_distro: Option<&str>,
+    ) -> Result<(), AdapterError> {
         let binary = Self::find_binary().ok_or(AdapterError::BinaryNotFound)?;
 
-        let output = Command::new(&binary)
-            .args([
+        let mut command = Command::new(&binary);
+        if let Some(distro) = wsl_distro {
+            // WSL-origin entry: translate the Linux cwd to a \\wsl$\<distro>\…
+            // UNC and run the resume command inside WSL via wsl.exe. Otherwise
+            // wezterm (running on Windows) can't enter the path and Claude
+            // (running on the Windows side) won't know about the session id
+            // that lives in the WSL distro.
+            let unc_cwd = wsl_cwd_to_unc(distro, cwd);
+            command.args([
+                "cli", "spawn", "--cwd", &unc_cwd, "--", "wsl.exe", "-d", distro, "-e", "claude",
+                "--resume", session_id,
+            ]);
+        } else {
+            command.args([
                 "cli",
                 "spawn",
                 "--cwd",
@@ -156,7 +173,10 @@ impl TerminalAdapter for WezTermAdapter {
                 "claude",
                 "--resume",
                 session_id,
-            ])
+            ]);
+        }
+
+        let output = command
             .output()
             .map_err(|e| AdapterError::CommandFailed(format!("failed to spawn: {e}")))?;
 
@@ -167,8 +187,32 @@ impl TerminalAdapter for WezTermAdapter {
             )));
         }
 
-        tracing::info!(session_id, cwd = %cwd.display(), "spawned resume in new WezTerm tab");
+        tracing::info!(
+            session_id,
+            cwd = %cwd.display(),
+            wsl_distro = ?wsl_distro,
+            "spawned resume in new WezTerm tab"
+        );
         Ok(())
+    }
+}
+
+/// Translate a Linux path into a Windows UNC path that resolves into the
+/// named WSL distro's filesystem. Pure string transform, no I/O. Used by the
+/// WezTerm adapter when spawning a new tab for a WSL-origin entry — `wezterm
+/// cli spawn` runs on the Windows side and can't `cd` into a Linux path.
+///
+/// `/home/simon/project` → `\\wsl$\Ubuntu-24.04\home\simon\project`
+/// `/`                   → `\\wsl$\Ubuntu-24.04\`
+pub(crate) fn wsl_cwd_to_unc(distro: &str, linux_cwd: &Path) -> String {
+    let path_str = linux_cwd.to_string_lossy();
+    // Drop the leading `/` if present, then convert remaining `/` to `\`.
+    let stripped = path_str.strip_prefix('/').unwrap_or(&path_str);
+    let backslashed = stripped.replace('/', "\\");
+    if backslashed.is_empty() {
+        format!("\\\\wsl$\\{}\\", distro)
+    } else {
+        format!("\\\\wsl$\\{}\\{}", distro, backslashed)
     }
 }
 
@@ -230,5 +274,31 @@ mod tests {
                 pane.pane_id, pane.tab_id, pane.window_id, pane.title, pane.cwd
             );
         }
+    }
+
+    #[test]
+    fn test_wsl_cwd_to_unc_typical_home() {
+        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/home/simon/project"));
+        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\simon\project");
+    }
+
+    #[test]
+    fn test_wsl_cwd_to_unc_root() {
+        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/"));
+        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\");
+    }
+
+    #[test]
+    fn test_wsl_cwd_to_unc_no_leading_slash() {
+        // Defensive: a relative-ish path (no leading slash) shouldn't double
+        // the prefix or panic.
+        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("home/simon"));
+        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\simon");
+    }
+
+    #[test]
+    fn test_wsl_cwd_to_unc_other_distro() {
+        let result = wsl_cwd_to_unc("Debian", Path::new("/var/log"));
+        assert_eq!(result, r"\\wsl$\Debian\var\log");
     }
 }
