@@ -82,6 +82,7 @@ fn main() {
             commands::apply_config,
             commands::check_hooks_installed,
             commands::install_plugin,
+            commands::dismiss_entry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

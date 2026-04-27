@@ -207,6 +207,27 @@ html, body {
   color: var(--drac-subtext);
 }
 
+/* Per-row dismiss X — hidden until the row is hovered. */
+.entry-dismiss {
+  flex-shrink: 0;
+  margin-left: 6px;
+  width: 20px; height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--drac-comment);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 120ms, background 120ms, color 120ms;
+}
+.entry-row:hover .entry-dismiss,
+.entry-dismiss:focus-visible { opacity: 0.75; }
+.entry-dismiss:hover { background: var(--drac-current); color: var(--drac-red); opacity: 1; }
+.entry-dismiss svg { display: block; }
+
 /* Empty state */
 .empty-state {
   display: flex;
