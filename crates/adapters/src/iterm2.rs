@@ -112,7 +112,14 @@ end tell"#,
         Ok(())
     }
 
-    fn spawn_resume(&self, cwd: &Path, session_id: &str) -> Result<(), AdapterError> {
+    fn spawn_resume(
+        &self,
+        cwd: &Path,
+        session_id: &str,
+        // iTerm2 only ships on macOS where WSL doesn't apply; the field is
+        // accepted for trait compatibility and ignored.
+        _wsl_distro: Option<&str>,
+    ) -> Result<(), AdapterError> {
         let cwd_str = cwd.to_string_lossy();
         let script = format!(
             r#"tell application "iTerm2"

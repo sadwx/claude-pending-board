@@ -22,12 +22,18 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
             .ok_or_else(|| "entry not found".to_string())?
             .clone();
 
-        let terminal_match_opt =
-            if entry.state == claude_pending_board_core::types::EntryState::Live {
-                s.adapter_registry.detect(entry.claude_pid).map(|(_, m)| m)
-            } else {
-                None
-            };
+        // Skip the host-side ancestor walk for WSL-origin entries — the
+        // claude_pid lives in WSL's pid namespace, so the walk can never
+        // find a Windows wezterm parent. WSL clicks always route through
+        // spawn_resume.
+        let terminal_match_opt = if entry.state
+            == claude_pending_board_core::types::EntryState::Live
+            && entry.wsl_distro.is_none()
+        {
+            s.adapter_registry.detect(entry.claude_pid).map(|(_, m)| m)
+        } else {
+            None
+        };
 
         let adapter_name = s.config.default_adapter.clone();
         (entry, terminal_match_opt, adapter_name)
@@ -55,7 +61,7 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
         let s = state.lock().unwrap();
         if let Some(adapter) = s.adapter_registry.get_by_name(&adapter_name) {
             adapter
-                .spawn_resume(&entry.cwd, &entry.session_id)
+                .spawn_resume(&entry.cwd, &entry.session_id, entry.wsl_distro.as_deref())
                 .map_err(|e| format!("spawn failed: {e}"))?;
             return Ok("resumed".to_string());
         }
