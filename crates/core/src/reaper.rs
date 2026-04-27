@@ -73,11 +73,22 @@ pub enum LivenessResult {
 }
 
 /// Check liveness of a single entry.
+///
+/// WSL-origin entries (those with `entry.wsl_distro = Some(...)`) skip the
+/// process and session-file checks entirely: their `claude_pid` belongs to a
+/// different OS namespace than the one the host can introspect, so any check
+/// would always look "dead". Hooks fired inside WSL will eventually clear the
+/// entry via `UserPromptSubmit` / `Stop` ops, and the periodic stale cleanup
+/// loop catches abandoned ones after the configured TTL.
 pub fn check_liveness(
     entry: &Entry,
     proc_table: &dyn ProcessTable,
     session_files: &dyn SessionFiles,
 ) -> LivenessResult {
+    if entry.wsl_distro.is_some() {
+        return LivenessResult::Alive;
+    }
+
     if !proc_table.is_alive(entry.claude_pid) {
         return LivenessResult::Dead;
     }
@@ -171,6 +182,7 @@ mod tests {
             message: "test".to_string(),
             state: EntryState::Live,
             stale_since: None,
+            wsl_distro: None,
         }
     }
 
@@ -274,5 +286,67 @@ mod tests {
 
         let ops = sweep(&[entry], &proc_table, &session_files);
         assert!(ops.is_empty());
+    }
+
+    #[test]
+    fn test_wsl_entry_with_dead_pid_is_alive() {
+        // The reaper cannot introspect WSL processes from the host. A WSL
+        // entry's claude_pid will always look "dead" to the host's process
+        // table, so we trust the hook stream and skip the check.
+        let mut entry = make_entry("wsl-session", 99999);
+        entry.wsl_distro = Some("Ubuntu-24.04".to_string());
+
+        let proc_table = MockProcessTable { alive_pids: vec![] };
+        let session_files = MockSessionFiles {
+            sessions: HashMap::new(),
+        };
+
+        assert_eq!(
+            check_liveness(&entry, &proc_table, &session_files),
+            LivenessResult::Alive
+        );
+    }
+
+    #[test]
+    fn test_wsl_entry_short_circuit_does_not_consult_session_files() {
+        // Even if the host happens to have a session file for the WSL pid
+        // (extremely unlikely but possible), we should not check it — the
+        // semantics are different OS namespaces.
+        let mut entry = make_entry("wsl-session", 1234);
+        entry.wsl_distro = Some("Ubuntu-24.04".to_string());
+
+        let proc_table = MockProcessTable {
+            alive_pids: vec![1234],
+        };
+        // Misleading "wrong-session" mapping that would normally produce a
+        // mismatch — it must be ignored for WSL entries.
+        let session_files = MockSessionFiles {
+            sessions: HashMap::from([(1234, "wrong-session".to_string())]),
+        };
+
+        assert_eq!(
+            check_liveness(&entry, &proc_table, &session_files),
+            LivenessResult::Alive
+        );
+    }
+
+    #[test]
+    fn test_sweep_skips_wsl_entries() {
+        let mut wsl_entry = make_entry("wsl-session", 99999);
+        wsl_entry.wsl_distro = Some("Ubuntu-24.04".to_string());
+
+        let mut native_dead_entry = make_entry("native-dead", 88888);
+        native_dead_entry.wsl_distro = None;
+
+        let proc_table = MockProcessTable { alive_pids: vec![] };
+        let session_files = MockSessionFiles {
+            sessions: HashMap::new(),
+        };
+
+        let ops = sweep(&[wsl_entry, native_dead_entry], &proc_table, &session_files);
+        // Only the native dead entry produces a stale op; the WSL entry is
+        // trusted alive and skipped.
+        assert_eq!(ops.len(), 1);
+        assert_eq!(ops[0].session_id(), "native-dead");
     }
 }

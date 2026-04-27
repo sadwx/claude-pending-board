@@ -43,8 +43,14 @@ pub struct Entry {
     pub notification_type: NotificationType,
     pub message: String,
     pub state: EntryState,
-    /// When the entry transitioned to Stale (for 24h expiry).
+    /// When the entry transitioned to Stale (for the 1h expiry — see
+    /// the periodic stale cleanup loop in `crates/app/src/services.rs`).
     pub stale_since: Option<DateTime<Utc>>,
+    /// Name of the WSL distro the entry originated in (e.g. `"Ubuntu-24.04"`),
+    /// or `None` for entries created on Windows or macOS directly.
+    /// Drives reaper short-circuit and click-to-resume routing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wsl_distro: Option<String>,
 }
 
 /// Operations stored as lines in board.jsonl.
@@ -60,6 +66,9 @@ pub enum Op {
         transcript_path: PathBuf,
         notification_type: NotificationType,
         message: String,
+        /// See [`Entry::wsl_distro`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        wsl_distro: Option<String>,
     },
     Clear {
         ts: DateTime<Utc>,

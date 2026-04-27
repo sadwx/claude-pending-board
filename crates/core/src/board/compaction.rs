@@ -85,6 +85,7 @@ pub fn compact(
             transcript_path: entry.transcript_path.clone(),
             notification_type: entry.notification_type,
             message: entry.message.clone(),
+            wsl_distro: entry.wsl_distro.clone(),
         };
         lines.push(serde_json::to_string(&add_op)?);
 
