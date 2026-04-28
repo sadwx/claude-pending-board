@@ -213,6 +213,7 @@ mod tests {
             notification_type: NotificationType::PermissionPrompt,
             message: "m".to_string(),
             wsl_distro: None,
+            wezterm_pane_id: None,
         };
         let line = serde_json::to_string(&op).unwrap();
         assert!(
@@ -220,5 +221,37 @@ mod tests {
             "wsl_distro field should be omitted when None: {}",
             line
         );
+        assert!(
+            !line.contains("wezterm_pane_id"),
+            "wezterm_pane_id field should be omitted when None: {}",
+            line
+        );
+    }
+
+    #[test]
+    fn test_parse_add_op_with_wezterm_pane_id() {
+        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/tmp","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m","wezterm_pane_id":"42"}"#;
+        let op = parse_line(line).unwrap();
+        match op {
+            Op::Add {
+                wezterm_pane_id, ..
+            } => {
+                assert_eq!(wezterm_pane_id.as_deref(), Some("42"))
+            }
+            _ => panic!("expected Add op"),
+        }
+    }
+
+    #[test]
+    fn test_parse_add_op_without_wezterm_pane_id() {
+        // Pre-v0.2 boards omit the field; deserializes to None.
+        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/tmp","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m"}"#;
+        let op = parse_line(line).unwrap();
+        match op {
+            Op::Add {
+                wezterm_pane_id, ..
+            } => assert_eq!(wezterm_pane_id, None),
+            _ => panic!("expected Add op"),
+        }
     }
 }

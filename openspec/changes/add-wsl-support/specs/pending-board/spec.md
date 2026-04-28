@@ -36,27 +36,38 @@ The system SHALL continuously verify that every live entry on the board correspo
 
 ### Requirement: Click to focus live terminal pane
 
-The system SHALL focus the exact terminal pane owning a live entry when the user clicks that entry. WSL-origin entries cannot be focused via the Windows-side adapters (their `terminal_pid` refers to a process inside WSL); a click on a WSL live entry SHALL fall through to the resume path described in *Click to resume stale entry*.
+The system SHALL focus the exact terminal pane owning a live entry when the user clicks that entry. When the hook captured `$WEZTERM_PANE` at notification time the system SHALL prefer that pane id over the host-side ancestor walk — this is what makes click-to-focus work across the WSL/Windows boundary (where the ancestor walk cannot succeed) and resolves the right pane on a Windows host with multiple WezTerm tabs. If the captured pane is no longer addressable (e.g. the user closed it), the click SHALL fall through to the resume path described in *Click to resume stale entry* rather than surface an error.
 
-#### Scenario: WezTerm pane is focused
+#### Scenario: Captured WezTerm pane is focused
 
-- **WHEN** the user clicks a live entry with `wsl_distro = None` whose ancestor walk from `claude_pid` matches a `wezterm-gui` process
+- **WHEN** the user clicks a live entry whose `wezterm_pane_id` is `Some(<id>)`
+- **THEN** the `WezTermAdapter` SHALL call `wezterm cli activate-pane --pane-id <id>` directly, without consulting the process tree
+- **AND** the WezTerm top-level window SHALL be brought to the foreground
+
+#### Scenario: WezTerm pane is focused via ancestor walk (no captured pane id)
+
+- **WHEN** the user clicks a live entry with `wezterm_pane_id = None`, `wsl_distro = None`, and an ancestor walk from `claude_pid` matches a `wezterm-gui` process
 - **THEN** the `WezTermAdapter` SHALL call `wezterm cli list --format json`, find the pane whose `pid` matches an ancestor in the walk, and call `wezterm cli activate-pane --pane-id <matched>`
 - **AND** the WezTerm top-level window SHALL be brought to the foreground
 
 #### Scenario: iTerm2 session is focused
 
-- **WHEN** the user clicks a live entry on macOS with `wsl_distro = None` whose ancestor walk matches an `iTerm2` process
+- **WHEN** the user clicks a live entry on macOS with `wezterm_pane_id = None`, `wsl_distro = None`, and an ancestor walk matching an `iTerm2` process
 - **THEN** the `ITerm2Adapter` SHALL activate iTerm2 via `osascript` and select the session whose `tty` matches the ancestor walk's terminal tty
 
-#### Scenario: WSL live entry click
+#### Scenario: WSL live entry click without captured pane id
 
-- **WHEN** the user clicks a live entry with `wsl_distro = Some(<distro>)`
-- **THEN** the click SHALL be routed to the resume path (the same path as a stale-entry click) because focus across the WSL/Windows boundary is not feasible
+- **WHEN** the user clicks a live entry with `wsl_distro = Some(<distro>)` and `wezterm_pane_id = None` (e.g. `WSLENV` not configured to forward `WEZTERM_PANE` across the boundary)
+- **THEN** the click SHALL be routed to the resume path because the host-side ancestor walk cannot reach a process inside WSL
+
+#### Scenario: Captured pane no longer exists
+
+- **WHEN** `wezterm cli activate-pane --pane-id <id>` fails (the pane was closed since the hook fired)
+- **THEN** the click SHALL fall through to `spawn_resume` so the user lands on a working session instead of an error
 
 #### Scenario: No adapter matched
 
-- **WHEN** the ancestor walk on a non-WSL entry returns no known terminal binary
+- **WHEN** the ancestor walk on a non-WSL entry with no captured pane id returns no known terminal binary
 - **THEN** the click SHALL fall through to the user's default adapter via `spawn_resume` rather than failing silently
 
 ### Requirement: Click to resume stale entry
@@ -96,6 +107,22 @@ The system SHALL record the originating WSL distro on every entry produced by a 
 - **WHEN** the bash hook script handles a `Notification` event
 - **AND** `WSL_DISTRO_NAME` is unset or empty
 - **THEN** the `add` op SHALL omit the `wsl_distro` field entirely (not write `null`, not write an empty string)
+
+### Requirement: WezTerm pane identification on board entries
+
+The system SHALL record the WezTerm pane id captured from the hook's environment on every entry produced by a Claude Code session running inside a WezTerm shell, so click-to-focus can address that exact pane across both native Windows and the WSL/Windows boundary.
+
+#### Scenario: Hook fires inside a WezTerm shell
+
+- **WHEN** the hook script handles a `Notification` event
+- **AND** the environment variable `WEZTERM_PANE` is non-empty (set by WezTerm in every shell it spawns — pwsh, bash, zsh, including bash inside WSL when `WSLENV` propagates it)
+- **THEN** the appended `add` op SHALL include a string field `"wezterm_pane_id": "<value>"` matching `$WEZTERM_PANE`
+
+#### Scenario: Hook fires outside WezTerm
+
+- **WHEN** the hook script handles a `Notification` event
+- **AND** `WEZTERM_PANE` is unset or empty (e.g. the user runs Claude inside a non-WezTerm terminal, or inside WSL without `WSLENV=WEZTERM_PANE/u` configured)
+- **THEN** the `add` op SHALL omit the `wezterm_pane_id` field entirely (not write `null`, not write an empty string)
 
 ### Requirement: Plugin manifest covers Linux platforms
 

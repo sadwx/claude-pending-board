@@ -51,6 +51,14 @@ pub struct Entry {
     /// Drives reaper short-circuit and click-to-resume routing.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wsl_distro: Option<String>,
+    /// WezTerm pane id captured from `$WEZTERM_PANE` at hook time. When
+    /// present, click-to-focus calls `wezterm cli activate-pane` directly
+    /// instead of walking the process tree — this is what makes WSL
+    /// click-to-focus land on the existing tab and also fixes Windows
+    /// multi-pane targeting. `None` for non-WezTerm shells (iTerm2, plain
+    /// Terminal.app, etc.) or older hook versions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wezterm_pane_id: Option<String>,
 }
 
 /// Operations stored as lines in board.jsonl.
@@ -69,6 +77,9 @@ pub enum Op {
         /// See [`Entry::wsl_distro`].
         #[serde(default, skip_serializing_if = "Option::is_none")]
         wsl_distro: Option<String>,
+        /// See [`Entry::wezterm_pane_id`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        wezterm_pane_id: Option<String>,
     },
     Clear {
         ts: DateTime<Utc>,

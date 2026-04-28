@@ -64,7 +64,13 @@ try {
                 catch { break }
             }
 
-            $op = @{
+            # WezTerm injects $env:WEZTERM_PANE into every shell it spawns —
+            # capture it so click-to-focus can call `wezterm cli activate-pane`
+            # directly instead of walking the process tree (which picks the
+            # wrong pane when the user has multiple wezterm tabs).
+            $wezTermPaneId = $env:WEZTERM_PANE
+
+            $op = [ordered]@{
                 op                = "add"
                 ts                = $ts
                 session_id        = $sessionId
@@ -74,9 +80,12 @@ try {
                 transcript_path   = $transcriptPath
                 notification_type = $notificationType
                 message           = if ($message) { $message } else { "" }
-            } | ConvertTo-Json -Compress
+            }
+            if ($wezTermPaneId) {
+                $op.wezterm_pane_id = $wezTermPaneId
+            }
 
-            Add-Content -Path $boardFile -Value $op -Encoding UTF8
+            Add-Content -Path $boardFile -Value ($op | ConvertTo-Json -Compress) -Encoding UTF8
         }
 
         "UserPromptSubmit" {

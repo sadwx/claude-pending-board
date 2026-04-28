@@ -25,6 +25,7 @@ impl StateStore {
                 notification_type,
                 message,
                 wsl_distro,
+                wezterm_pane_id,
             } => {
                 self.entries.insert(
                     session_id.clone(),
@@ -40,6 +41,7 @@ impl StateStore {
                         state: EntryState::Live,
                         stale_since: None,
                         wsl_distro,
+                        wezterm_pane_id,
                     },
                 );
                 true
@@ -150,6 +152,7 @@ mod tests {
             notification_type,
             message: "test".to_string(),
             wsl_distro: None,
+            wezterm_pane_id: None,
         }
     }
 
