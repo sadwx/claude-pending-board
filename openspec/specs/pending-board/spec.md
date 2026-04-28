@@ -27,7 +27,7 @@ The system SHALL capture every `permission_prompt` and `idle_prompt` notificatio
 
 ### Requirement: Entry removal
 
-The system SHALL remove a pending entry from the board when the user answers or when the turn ends, via the `UserPromptSubmit` and `Stop` hooks.
+The system SHALL remove a pending entry from the board when the user answers, when the turn ends, or when the session itself terminates — via the `UserPromptSubmit`, `Stop`, and `SessionEnd` hooks respectively.
 
 #### Scenario: User answers the prompt
 
@@ -40,6 +40,14 @@ The system SHALL remove a pending entry from the board when the user answers or 
 - **WHEN** Claude Code fires a `Stop` hook event
 - **THEN** the hook SHALL append `{"op":"clear","ts":<iso>,"session_id":<id>,"reason":"stop"}` to `board.jsonl`
 - **AND** the `StateStore` SHALL remove the entry for that `session_id`
+
+#### Scenario: Session ends (`/clear`, `/compact`, normal exit)
+
+- **WHEN** Claude Code fires a `SessionEnd` hook event for a session with `session_id` (the *terminating* session's id, not the new one for `/clear` and `/compact`)
+- **THEN** the hook SHALL append `{"op":"clear","ts":<iso>,"session_id":<id>,"reason":"session_ended"}` to `board.jsonl`
+- **AND** the `StateStore` SHALL remove the entry for that `session_id`
+
+This covers `/clear` specifically — it does NOT fire `Stop`, only `SessionEnd` for the old session followed by `SessionStart` for the new one. `/compact`, normal exit, and other termination paths are also covered uniformly.
 
 #### Scenario: Clear op for unknown session_id is a no-op
 
@@ -189,10 +197,16 @@ The system SHALL present a 5-second confirmation panel on manual dismiss with a 
 
 #### Scenario: Confirmation appears on dismiss click
 
-- **WHEN** the user clicks the HUD dismiss `×`
+- **WHEN** the user clicks the HUD dismiss `×` and the `skip_dismiss_confirmation` setting is `false`
 - **THEN** the HUD list area SHALL be replaced with a confirmation panel while the header remains visible
 - **AND** the panel SHALL show a heading describing the upcoming hide duration
 - **AND** the panel SHALL show two buttons: a "Wake me" option and a "Stay silent" option, with the one matching the current Reminding default visually highlighted and showing a countdown badge
+
+#### Scenario: Skip-confirm bypasses the panel entirely
+
+- **WHEN** the user clicks the HUD dismiss `×` and the `skip_dismiss_confirmation` setting is `true`
+- **THEN** the HUD SHALL apply the current global Reminding setting immediately (equivalent to a 0-second countdown firing the default action)
+- **AND** SHALL NOT flash the confirmation panel at any point
 
 #### Scenario: Countdown expires with default
 
@@ -290,7 +304,7 @@ The system SHALL provide two equivalent installation paths for the hook scripts:
 
 - **WHEN** the user runs `claude plugin marketplace add sadwx/claude-pending-board` followed by `claude plugin install claude-pending-board@claude-pending-board` (or the equivalent slash commands inside Claude Code)
 - **THEN** the marketplace catalog at `.claude-plugin/marketplace.json` SHALL list `claude-pending-board` with `source = "./plugin"`
-- **AND** the plugin's `plugin.json` SHALL register the three hooks (`Notification`, `UserPromptSubmit`, `Stop`) pointing to platform-appropriate scripts bundled inside the plugin
+- **AND** the plugin's `plugin.json` SHALL register the four hooks (`Notification`, `UserPromptSubmit`, `Stop`, `SessionEnd`) pointing to platform-appropriate scripts bundled inside the plugin
 - **AND** no changes SHALL be made to the user's global `~/.claude/settings.json`
 
 #### Scenario: First-run setup card in HUD

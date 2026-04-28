@@ -110,6 +110,22 @@ try {
             Add-Content -Path $boardFile -Value $op -Encoding UTF8
         }
 
+        "SessionEnd" {
+            # Fires on `/clear`, `/compact`, normal exit, or any other path
+            # that terminates the session. Treat all of these as "this entry
+            # is no longer waiting for me" and drop it from the HUD. Stop
+            # already covers the post-reply path, but it does NOT fire on
+            # `/clear` — SessionEnd is the only signal there.
+            $op = @{
+                op         = "clear"
+                ts         = $ts
+                session_id = $sessionId
+                reason     = "session_ended"
+            } | ConvertTo-Json -Compress
+
+            Add-Content -Path $boardFile -Value $op -Encoding UTF8
+        }
+
         default {
             # Unknown event — ignore silently
         }
