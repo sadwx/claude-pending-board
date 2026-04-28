@@ -269,9 +269,25 @@ async function commitDismiss(remindingOverride) {
   }
 }
 
-dismissBtn.addEventListener("click", function (e) {
+dismissBtn.addEventListener("click", async function (e) {
   e.stopPropagation();
-  showDismissPanel();
+  // When the user has opted into "Skip confirmation" we must not flash the
+  // confirm panel — that's the entire point of the setting. Honor the user's
+  // saved reminding preference (no override) so the visibility FSM treats
+  // this exactly like the auto-commit at countdown end.
+  let config;
+  try {
+    config = await invoke("get_config");
+  } catch (err) {
+    console.error("get_config error:", err);
+    showDismissPanel();
+    return;
+  }
+  if (config.skip_dismiss_confirmation) {
+    commitDismiss(null);
+  } else {
+    showDismissPanel();
+  }
 });
 
 btnWakeMe.addEventListener("click", function () { commitDismiss(true); });
