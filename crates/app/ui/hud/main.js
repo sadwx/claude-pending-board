@@ -207,6 +207,14 @@ async function showDismissPanel() {
   if (isDismissPanelVisible) return;
 
   const config = await invoke("get_config");
+  // Tell the visibility FSM to cancel any pending auto-hide grace timer.
+  // Without this, dismissing the last entry via the per-entry × starts a
+  // 2-second hide countdown; if the user then clicks the header × the
+  // confirm panel briefly appears, then the HUD vanishes mid-countdown
+  // and reopening from the tray shows orphaned panel state.
+  invoke("dismiss_panel_opened").catch(function (err) {
+    console.error("dismiss_panel_opened error:", err);
+  });
   isDismissPanelVisible = true;
   entryList.style.display = "none";
   hudFooter.classList.add("hidden");
