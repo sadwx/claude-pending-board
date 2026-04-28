@@ -21,12 +21,18 @@ pub fn ensure_wezterm_pane_in_wslenv() {
         return;
     }
 
-    let current = read_user_wslenv().unwrap_or_default();
-    match merge_wslenv(&current, TOKEN) {
+    // Windows merges WSLENV from HKLM (machine) and HKCU (user) when launching
+    // new processes — but for non-PATH vars, USER overrides MACHINE entirely.
+    // So if we only wrote HKCU we'd silently clobber any system-level tokens
+    // (e.g. `JRE_HOME/p`). Read both, merge, and write the union to HKCU.
+    let user_wslenv = read_user_wslenv();
+    let machine_wslenv = read_machine_wslenv();
+    match merge_wslenv(user_wslenv.as_deref(), machine_wslenv.as_deref(), TOKEN) {
         Some(new_value) => {
             tracing::info!(
-                old = %current,
-                new = %new_value,
+                user_old = %user_wslenv.as_deref().unwrap_or("(unset)"),
+                machine = %machine_wslenv.as_deref().unwrap_or("(unset)"),
+                user_new = %new_value,
                 "appending WEZTERM_PANE/u to user WSLENV"
             );
             if let Err(e) = write_user_wslenv(&new_value) {
@@ -65,6 +71,17 @@ fn read_user_wslenv() -> Option<String> {
     env.get_value::<String, _>("WSLENV").ok()
 }
 
+fn read_machine_wslenv() -> Option<String> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let env = hklm
+        .open_subkey(r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+        .ok()?;
+    env.get_value::<String, _>("WSLENV").ok()
+}
+
 fn write_user_wslenv(new_value: &str) -> Result<(), String> {
     // Shell out to PowerShell rather than writing the registry directly so
     // the .NET SetEnvironmentVariable wrapper handles the WM_SETTINGCHANGE
@@ -90,21 +107,49 @@ fn write_user_wslenv(new_value: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Pure-string merge: returns `Some(new_value)` if `token` was missing and
-/// needs appending, `None` if it's already present (idempotent re-run).
-/// Tokens are colon-separated, matching `WSLENV` syntax (the `/u` suffix on
-/// our token signals "Windows → Unix path translation, treat as plain string"
-/// — see Microsoft's WSLENV docs).
-fn merge_wslenv(current: &str, token: &str) -> Option<String> {
-    let already_present = current.split(':').any(|t| !t.is_empty() && t == token);
-    if already_present {
+/// Pure-string merge: figure out what to write to `HKCU\Environment\WSLENV`.
+///
+/// Returns `Some(new_value)` if a write is needed, `None` if the user-level
+/// value already contains `token` (idempotent re-run).
+///
+/// The trick: on first run the user-level value may be empty while the
+/// machine-level value carries existing tokens (e.g. `JRE_HOME/p` set by an
+/// installer). For non-PATH env vars Windows resolves USER OVER MACHINE at
+/// process launch — so writing only `WEZTERM_PANE/u` to HKCU would clobber
+/// the machine tokens for new processes. To preserve them, when HKCU is
+/// empty we seed the new value with the machine value before appending our
+/// token. Subsequent runs see HKCU is non-empty and respect that as-is.
+fn merge_wslenv(user: Option<&str>, machine: Option<&str>, token: &str) -> Option<String> {
+    // Idempotency: if HKCU already has the token we're done. We deliberately
+    // don't inspect HKLM here — if the machine value carries the token the
+    // user has effectively configured WSLENV manually and our HKCU write
+    // would only overwrite their preference.
+    if user.is_some_and(|u| contains_token(u, token)) {
         return None;
     }
-    if current.is_empty() {
+
+    // Pick the seed: HKCU if non-empty, otherwise HKLM, otherwise empty.
+    let seed = user
+        .filter(|u| !u.is_empty())
+        .or_else(|| machine.filter(|m| !m.is_empty()))
+        .unwrap_or("");
+
+    if seed.is_empty() {
         return Some(token.to_string());
     }
-    let trimmed = current.trim_end_matches(':');
+
+    // Don't double-up if the seed already has the token (only reachable when
+    // HKCU was empty and HKLM has it — rare but possible).
+    if contains_token(seed, token) {
+        return Some(seed.to_string());
+    }
+
+    let trimmed = seed.trim_end_matches(':');
     Some(format!("{trimmed}:{token}"))
+}
+
+fn contains_token(value: &str, token: &str) -> bool {
+    value.split(':').any(|t| !t.is_empty() && t == token)
 }
 
 #[cfg(test)]
@@ -112,58 +157,100 @@ mod tests {
     use super::*;
 
     #[test]
-    fn merge_into_empty() {
-        assert_eq!(merge_wslenv("", TOKEN), Some(TOKEN.to_string()));
-    }
-
-    #[test]
-    fn merge_when_token_already_present_is_noop() {
-        assert_eq!(merge_wslenv("WEZTERM_PANE/u", TOKEN), None);
-        assert_eq!(merge_wslenv("FOO/p:WEZTERM_PANE/u", TOKEN), None);
-        assert_eq!(merge_wslenv("WEZTERM_PANE/u:BAR", TOKEN), None);
-        assert_eq!(merge_wslenv("FOO:WEZTERM_PANE/u:BAR", TOKEN), None);
-    }
-
-    #[test]
-    fn merge_appends_to_existing_tokens() {
+    fn merge_into_empty_when_neither_set() {
+        assert_eq!(merge_wslenv(None, None, TOKEN), Some(TOKEN.to_string()));
         assert_eq!(
-            merge_wslenv("USERPROFILE/p", TOKEN),
+            merge_wslenv(Some(""), Some(""), TOKEN),
+            Some(TOKEN.to_string())
+        );
+    }
+
+    #[test]
+    fn merge_when_user_already_has_token_is_noop() {
+        assert_eq!(merge_wslenv(Some("WEZTERM_PANE/u"), None, TOKEN), None);
+        assert_eq!(
+            merge_wslenv(Some("FOO/p:WEZTERM_PANE/u"), None, TOKEN),
+            None
+        );
+        assert_eq!(
+            merge_wslenv(Some("WEZTERM_PANE/u:BAR"), Some("anything"), TOKEN),
+            None
+        );
+        assert_eq!(
+            merge_wslenv(Some("FOO:WEZTERM_PANE/u:BAR"), None, TOKEN),
+            None
+        );
+    }
+
+    #[test]
+    fn merge_appends_to_user_tokens_when_user_set() {
+        assert_eq!(
+            merge_wslenv(Some("USERPROFILE/p"), None, TOKEN),
             Some("USERPROFILE/p:WEZTERM_PANE/u".to_string())
         );
         assert_eq!(
-            merge_wslenv("FOO:BAR/p", TOKEN),
+            merge_wslenv(Some("FOO:BAR/p"), Some("ignored"), TOKEN),
             Some("FOO:BAR/p:WEZTERM_PANE/u".to_string())
+        );
+    }
+
+    #[test]
+    fn merge_seeds_from_machine_when_user_unset() {
+        // The original bug: writing just `WEZTERM_PANE/u` to HKCU would
+        // clobber the machine-level `JRE_HOME/p` for new processes (USER
+        // wins over MACHINE). Seed with the machine value first.
+        assert_eq!(
+            merge_wslenv(None, Some("JRE_HOME/p"), TOKEN),
+            Some("JRE_HOME/p:WEZTERM_PANE/u".to_string())
+        );
+        assert_eq!(
+            merge_wslenv(Some(""), Some("JRE_HOME/p:OTHER/p"), TOKEN),
+            Some("JRE_HOME/p:OTHER/p:WEZTERM_PANE/u".to_string())
+        );
+    }
+
+    #[test]
+    fn merge_machine_value_already_has_token() {
+        // The token is in machine WSLENV but user is empty. We still need
+        // to write the merged value to HKCU because USER-empty + MACHINE-set
+        // means USER will win as empty otherwise. Result is the machine
+        // value verbatim.
+        assert_eq!(
+            merge_wslenv(None, Some("WEZTERM_PANE/u"), TOKEN),
+            Some("WEZTERM_PANE/u".to_string())
+        );
+        assert_eq!(
+            merge_wslenv(None, Some("FOO:WEZTERM_PANE/u"), TOKEN),
+            Some("FOO:WEZTERM_PANE/u".to_string())
         );
     }
 
     #[test]
     fn merge_strips_trailing_colon_to_avoid_empty_token() {
         assert_eq!(
-            merge_wslenv("FOO:", TOKEN),
+            merge_wslenv(Some("FOO:"), None, TOKEN),
             Some("FOO:WEZTERM_PANE/u".to_string())
         );
     }
 
     #[test]
     fn merge_does_not_match_partial_tokens() {
-        // "WEZTERM_PANE" without the /u suffix is a different token and
-        // should not satisfy the check.
+        // "WEZTERM_PANE" without the /u suffix is a different token.
         assert_eq!(
-            merge_wslenv("WEZTERM_PANE", TOKEN),
+            merge_wslenv(Some("WEZTERM_PANE"), None, TOKEN),
             Some("WEZTERM_PANE:WEZTERM_PANE/u".to_string())
         );
         // Substring shouldn't match either.
         assert_eq!(
-            merge_wslenv("OTHER_WEZTERM_PANE/u_THING", TOKEN),
+            merge_wslenv(Some("OTHER_WEZTERM_PANE/u_THING"), None, TOKEN),
             Some("OTHER_WEZTERM_PANE/u_THING:WEZTERM_PANE/u".to_string())
         );
     }
 
     #[test]
     fn merge_handles_leading_colon() {
-        // `:FOO` parses as ["", "FOO"]; the empty token is filtered out.
         assert_eq!(
-            merge_wslenv(":FOO", TOKEN),
+            merge_wslenv(Some(":FOO"), None, TOKEN),
             Some(":FOO:WEZTERM_PANE/u".to_string())
         );
     }

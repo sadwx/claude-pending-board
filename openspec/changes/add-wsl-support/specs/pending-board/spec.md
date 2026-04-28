@@ -126,22 +126,36 @@ The system SHALL record the WezTerm pane id captured from the hook's environment
 
 ### Requirement: Automatic WSLENV configuration on Windows
 
-The tray app SHALL ensure `WEZTERM_PANE/u` is included in the user's persistent `WSLENV` environment variable when WSL is detected on the host, so that click-to-focus works for WSL-origin entries without any manual user setup. The check SHALL run in the background on every app launch and SHALL be idempotent — re-running on an already-configured machine SHALL produce no observable change.
+The tray app SHALL ensure `WEZTERM_PANE/u` is included in the user's persistent `WSLENV` environment variable when WSL is detected on the host, so that click-to-focus works for WSL-origin entries without any manual user setup. The check SHALL run in the background on every app launch, SHALL be idempotent on subsequent runs, and SHALL preserve any pre-existing `WSLENV` tokens at either the machine or user scope so unrelated software (e.g. a JDK installer setting `JRE_HOME/p`) keeps working.
 
-#### Scenario: WSL detected, WSLENV missing the token
+#### Scenario: User WSLENV empty, machine WSLENV has tokens
 
 - **WHEN** the tray app starts on Windows
-- **AND** `wsl.exe -l -q` exits 0 with non-empty output (i.e. at least one WSL distro is registered)
-- **AND** the user's persistent `WSLENV` (read from `HKCU\Environment\WSLENV`) does not include the token `WEZTERM_PANE/u`
-- **THEN** the app SHALL append `WEZTERM_PANE/u` to that value (preserving any existing tokens, separated by `:`)
+- **AND** WSL is detected (i.e. `wsl.exe -l -q` exits 0 with non-empty output)
+- **AND** `HKCU\Environment\WSLENV` is unset or empty
+- **AND** `HKLM\…\Session Manager\Environment\WSLENV` contains existing tokens (e.g. `JRE_HOME/p`)
+- **THEN** the app SHALL write to `HKCU\Environment\WSLENV` a value built by appending `WEZTERM_PANE/u` to a copy of the machine-scope tokens, separated by `:` (e.g. `JRE_HOME/p:WEZTERM_PANE/u`)
 - **AND** broadcast `WM_SETTINGCHANGE` so subsequently-spawned shells inherit the new value
-- **AND** log the change at INFO level
 
-#### Scenario: WSL detected, WSLENV already configured
+This avoids silently clobbering the machine-scope tokens at process launch — Windows resolves USER over MACHINE for non-PATH env vars, so a HKCU value of `WEZTERM_PANE/u` alone would suppress the machine value entirely.
 
-- **WHEN** the tray app starts on Windows
-- **AND** WSL is detected
-- **AND** the user's `WSLENV` already includes `WEZTERM_PANE/u`
+#### Scenario: User WSLENV missing the token but already has other entries
+
+- **WHEN** the tray app starts on Windows, WSL is detected
+- **AND** `HKCU\Environment\WSLENV` is non-empty but does not include `WEZTERM_PANE/u`
+- **THEN** the app SHALL append `WEZTERM_PANE/u` to the existing user value (preserving any existing tokens, separated by `:`)
+- **AND** broadcast `WM_SETTINGCHANGE`
+
+#### Scenario: User WSLENV both empty and machine WSLENV empty
+
+- **WHEN** the tray app starts on Windows, WSL is detected
+- **AND** both `HKCU\Environment\WSLENV` and `HKLM\…\Environment\WSLENV` are unset or empty
+- **THEN** the app SHALL set `HKCU\Environment\WSLENV` to exactly `WEZTERM_PANE/u`
+
+#### Scenario: User WSLENV already configured
+
+- **WHEN** the tray app starts on Windows, WSL is detected
+- **AND** `HKCU\Environment\WSLENV` already includes the token `WEZTERM_PANE/u`
 - **THEN** the app SHALL make no changes and log at DEBUG level
 
 #### Scenario: WSL not detected
