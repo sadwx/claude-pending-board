@@ -183,6 +183,7 @@ mod tests {
             state: EntryState::Live,
             stale_since: None,
             wsl_distro: None,
+            wezterm_pane_id: None,
         }
     }
 

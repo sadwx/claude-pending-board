@@ -113,8 +113,22 @@ except:
                 wsl_distro_field=$(printf ',"wsl_distro":"%s"' "$WSL_DISTRO_NAME")
             fi
 
-            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"%s}\n' \
-                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" "$wsl_distro_field" \
+            # WezTerm injects $WEZTERM_PANE into every shell it spawns. Capture
+            # it so click-to-focus can address the exact pane via
+            # `wezterm cli activate-pane --pane-id <id>` instead of guessing
+            # via the process tree (which fails for WSL — claude_pid lives in
+            # WSL's pid namespace — and picks the wrong pane on Windows when
+            # the user has multiple wezterm tabs).
+            #
+            # WSL note: requires `WSLENV=WEZTERM_PANE/u` so the env var
+            # crosses the Win→WSL boundary (see INSTALL.md).
+            local wezterm_pane_field=""
+            if [ -n "${WEZTERM_PANE:-}" ]; then
+                wezterm_pane_field=$(printf ',"wezterm_pane_id":"%s"' "$WEZTERM_PANE")
+            fi
+
+            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"%s%s}\n' \
+                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" "$wsl_distro_field" "$wezterm_pane_field" \
                 >> "$BOARD_FILE"
             ;;
 

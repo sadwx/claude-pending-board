@@ -53,6 +53,27 @@ Or from any Claude Code session:
 
 Any of the three paths produces the same result: three hooks (`Notification`, `UserPromptSubmit`, `Stop`) registered with Claude Code.
 
+### Step 2.5 · WSL (Windows users running Claude Code inside WSL)
+
+If you launch Claude Code inside WSL via WezTerm, install the plugin **from inside WSL**, not from a native Windows shell. The Linux hook script is what fires there. Open a WSL tab and run:
+
+```bash
+claude plugin marketplace add sadwx/claude-pending-board
+claude plugin install claude-pending-board@claude-pending-board
+```
+
+Then — **once per Windows user** — let `WEZTERM_PANE` cross the Windows→WSL boundary so click-to-focus can address the right tab. From a Windows PowerShell tab:
+
+```powershell
+setx WSLENV "$env:WSLENV;WEZTERM_PANE/u"
+```
+
+Open a fresh WezTerm tab afterward. Verify with `echo $WEZTERM_PANE` inside WSL — it should print a number.
+
+Without this step, WSL entries still appear in the HUD and clicking still resumes the session, but it opens a fresh tab instead of focusing the existing one.
+
+The Windows tray app is what runs and renders the HUD; only the hook scripts live in WSL.
+
 ## Step 3 · Verify
 
 1. **Start a Claude Code session in WezTerm / iTerm2** in any project.

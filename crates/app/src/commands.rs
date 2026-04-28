@@ -12,9 +12,11 @@ pub fn list_entries(state: State<SharedState>) -> Vec<Entry> {
 
 #[tauri::command]
 pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<String, String> {
-    // Collect all data we need while holding the lock, then release it before
-    // calling into adapter methods (which may block or call external processes).
-    let (entry, terminal_match_opt, adapter_name) = {
+    use claude_pending_board_core::types::{EntryState, TerminalMatch};
+
+    // Collect everything we need from state under the lock, then drop it
+    // before calling adapter methods (which shell out and can block).
+    let (entry, focus_target, adapter_name) = {
         let s = state.lock().unwrap();
         let entry = s
             .store
@@ -22,37 +24,56 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
             .ok_or_else(|| "entry not found".to_string())?
             .clone();
 
-        // Skip the host-side ancestor walk for WSL-origin entries — the
-        // claude_pid lives in WSL's pid namespace, so the walk can never
-        // find a Windows wezterm parent. WSL clicks always route through
-        // spawn_resume.
-        let terminal_match_opt = if entry.state
-            == claude_pending_board_core::types::EntryState::Live
-            && entry.wsl_distro.is_none()
-        {
-            s.adapter_registry.detect(entry.claude_pid).map(|(_, m)| m)
-        } else {
-            None
-        };
+        // Routing for click-to-focus, in priority order:
+        //   1. If the hook captured `$WEZTERM_PANE`, address that pane
+        //      directly via the WezTerm adapter. Works for native Windows
+        //      (fixes the historical always-pane[0] bug), WSL (claude_pid
+        //      is unreachable from the Windows pid namespace, so the walk
+        //      can never succeed), and macOS-with-wezterm.
+        //   2. Otherwise for live, non-WSL entries try the legacy ancestor
+        //      walk so iTerm2 / older boards keep working.
+        //   3. WSL entries with no captured pane id fall through to
+        //      spawn_resume below (last-resort: opens a fresh tab).
+        let focus_target: Option<(String, TerminalMatch)> =
+            if let Some(pane_id) = entry.wezterm_pane_id.clone() {
+                Some((
+                    "WezTerm".to_string(),
+                    TerminalMatch {
+                        terminal_name: "WezTerm".to_string(),
+                        terminal_pid: entry.terminal_pid.unwrap_or(0),
+                        pane_id: Some(pane_id),
+                        tty: None,
+                    },
+                ))
+            } else if entry.state == EntryState::Live && entry.wsl_distro.is_none() {
+                s.adapter_registry
+                    .detect(entry.claude_pid)
+                    .map(|(adapter, m)| (adapter.name().to_string(), m))
+            } else {
+                None
+            };
 
         let adapter_name = s.config.default_adapter.clone();
-        (entry, terminal_match_opt, adapter_name)
+        (entry, focus_target, adapter_name)
     };
 
-    // Now lock again only to get the adapter reference and call it outside
-    if let Some(terminal_match) = terminal_match_opt {
-        let s = state.lock().unwrap();
-        // We need to detect again to get the adapter reference (can't store refs across lock)
-        if let Some((adapter, _)) = s.adapter_registry.detect(entry.claude_pid) {
-            // Clone the adapter name to call focus without holding lock reference
-            let adapter_name_inner = adapter.name().to_string();
-            drop(s);
-            // Re-acquire to call via name lookup (avoids lifetime issues)
-            let s2 = state.lock().unwrap();
-            if let Some(a) = s2.adapter_registry.get_by_name(&adapter_name_inner) {
-                a.focus_pane(&terminal_match)
-                    .map_err(|e| format!("focus failed: {e}"))?;
-                return Ok("focused".to_string());
+    if let Some((target_adapter, terminal_match)) = focus_target {
+        let focus_result = {
+            let s = state.lock().unwrap();
+            s.adapter_registry
+                .get_by_name(&target_adapter)
+                .map(|adapter| adapter.focus_pane(&terminal_match))
+        };
+        match focus_result {
+            Some(Ok(())) => return Ok("focused".to_string()),
+            Some(Err(e)) => {
+                // The captured pane may have been closed since the hook
+                // fired — fall through to spawn_resume so the user lands
+                // on a working session instead of an error.
+                tracing::warn!(error = %e, "focus_pane failed, falling back to spawn_resume");
+            }
+            None => {
+                tracing::warn!(target_adapter, "focus target adapter not available");
             }
         }
     }
