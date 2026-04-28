@@ -33,11 +33,24 @@ pub enum VisibilityState {
 /// Events that drive the FSM.
 #[derive(Debug, Clone)]
 pub enum VisibilityEvent {
-    EntryAdded { board_count: usize },
-    EntryRemoved { board_count: usize },
-    ManualDismiss { reminding_override: Option<bool> },
+    EntryAdded {
+        board_count: usize,
+    },
+    EntryRemoved {
+        board_count: usize,
+    },
+    ManualDismiss {
+        reminding_override: Option<bool>,
+    },
     ManualOpen,
     Tick,
+    /// The dismiss confirmation panel just opened in the HUD. The user is
+    /// actively interacting — cancel any pending auto-hide grace deadline so
+    /// the HUD doesn't vanish mid-countdown. The eventual `ManualDismiss`
+    /// (from a button click, Esc, or the countdown firing) is what hides
+    /// the HUD, and it does so via the cooldown path the user actually
+    /// intended.
+    DismissPanelOpened,
 }
 
 /// Actions the UI layer should take in response to a state transition.
@@ -136,6 +149,12 @@ impl VisibilityController {
                 VisibilityAction::None
             }
             (VisibilityState::Shown { .. }, VisibilityEvent::ManualOpen) => VisibilityAction::None,
+            (VisibilityState::Shown { grace_deadline }, VisibilityEvent::DismissPanelOpened) => {
+                // User is mid-interaction. Cancel any pending grace timer
+                // so the HUD doesn't vanish before they commit.
+                *grace_deadline = None;
+                VisibilityAction::None
+            }
 
             // --- CooldownHidden state ---
             (
@@ -179,6 +198,11 @@ impl VisibilityController {
                 }
             }
             (VisibilityState::CooldownHidden { .. }, VisibilityEvent::ManualDismiss { .. }) => {
+                VisibilityAction::None
+            }
+            (VisibilityState::CooldownHidden { .. }, VisibilityEvent::DismissPanelOpened) => {
+                // Defensive: panel can't be open while HUD is hidden, but
+                // accept the event as a no-op rather than panicking.
                 VisibilityAction::None
             }
         }
@@ -400,5 +424,84 @@ mod tests {
         let action = ctrl.handle(VisibilityEvent::ManualOpen);
         assert_eq!(action, VisibilityAction::ShowHud);
         assert!(matches!(ctrl.state(), VisibilityState::Shown { .. }));
+    }
+
+    #[test]
+    fn test_dismiss_panel_opened_cancels_grace_deadline() {
+        // Repro for the per-entry-X → header-X race: dismissing the last
+        // entry sets a grace deadline; opening the dismiss panel must
+        // cancel it so a Tick can't auto-hide the HUD mid-countdown.
+        let clock = FakeClock::new(t0());
+        let mut ctrl = VisibilityController::new(clock.clone(), default_config());
+        ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
+        ctrl.handle(VisibilityEvent::EntryRemoved { board_count: 0 });
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: Some(_)
+            }
+        ));
+
+        let action = ctrl.handle(VisibilityEvent::DismissPanelOpened);
+        assert_eq!(action, VisibilityAction::None);
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: None
+            }
+        ));
+
+        // Even after the grace window would have expired, a Tick is now a
+        // no-op — the HUD stays Shown so the user can finish interacting
+        // with the dismiss panel.
+        clock.advance(Duration::seconds(60));
+        let action = ctrl.handle(VisibilityEvent::Tick);
+        assert_eq!(action, VisibilityAction::None);
+        assert!(matches!(ctrl.state(), VisibilityState::Shown { .. }));
+    }
+
+    #[test]
+    fn test_manual_dismiss_after_panel_opened_still_enters_cooldown() {
+        // After cancelling the grace timer via DismissPanelOpened, the
+        // eventual ManualDismiss (countdown / button / Esc) should still
+        // transition to CooldownHidden — that's what the user actually
+        // intended by clicking the header X.
+        let clock = FakeClock::new(t0());
+        let mut ctrl = VisibilityController::new(clock, default_config());
+        ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
+        ctrl.handle(VisibilityEvent::EntryRemoved { board_count: 0 });
+        ctrl.handle(VisibilityEvent::DismissPanelOpened);
+
+        let action = ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
+        assert_eq!(action, VisibilityAction::HideHud);
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::CooldownHidden { .. }
+        ));
+    }
+
+    #[test]
+    fn test_dismiss_panel_opened_in_other_states_is_noop() {
+        let clock = FakeClock::new(t0());
+        let mut ctrl = VisibilityController::new(clock, default_config());
+        // Hidden → no-op (catch-all already handles this; assert it
+        // doesn't transition or panic).
+        let action = ctrl.handle(VisibilityEvent::DismissPanelOpened);
+        assert_eq!(action, VisibilityAction::None);
+        assert!(matches!(ctrl.state(), VisibilityState::Hidden));
+
+        // CooldownHidden → no-op (defensive; shouldn't happen in practice).
+        ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
+        let action = ctrl.handle(VisibilityEvent::DismissPanelOpened);
+        assert_eq!(action, VisibilityAction::None);
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::CooldownHidden { .. }
+        ));
     }
 }

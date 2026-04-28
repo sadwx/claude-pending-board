@@ -91,6 +91,16 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
     Err("no adapter available".to_string())
 }
 
+/// Frontend signals that the user just opened the dismiss confirmation
+/// panel. Cancels any pending auto-hide grace deadline so the HUD doesn't
+/// vanish before the panel commits — see `VisibilityEvent::DismissPanelOpened`.
+#[tauri::command]
+pub fn dismiss_panel_opened(state: State<SharedState>) -> Result<(), String> {
+    let mut s = state.lock().unwrap();
+    s.visibility.handle(VisibilityEvent::DismissPanelOpened);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn dismiss_hud(
     app: AppHandle,

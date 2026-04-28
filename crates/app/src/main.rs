@@ -84,6 +84,7 @@ fn main() {
             commands::list_entries,
             commands::focus_entry,
             commands::dismiss_hud,
+            commands::dismiss_panel_opened,
             commands::manual_open,
             commands::open_settings,
             commands::hide_settings,
