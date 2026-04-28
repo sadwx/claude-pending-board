@@ -124,6 +124,36 @@ The system SHALL record the WezTerm pane id captured from the hook's environment
 - **AND** `WEZTERM_PANE` is unset or empty (e.g. the user runs Claude inside a non-WezTerm terminal, or inside WSL without `WSLENV=WEZTERM_PANE/u` configured)
 - **THEN** the `add` op SHALL omit the `wezterm_pane_id` field entirely (not write `null`, not write an empty string)
 
+### Requirement: Automatic WSLENV configuration on Windows
+
+The tray app SHALL ensure `WEZTERM_PANE/u` is included in the user's persistent `WSLENV` environment variable when WSL is detected on the host, so that click-to-focus works for WSL-origin entries without any manual user setup. The check SHALL run in the background on every app launch and SHALL be idempotent — re-running on an already-configured machine SHALL produce no observable change.
+
+#### Scenario: WSL detected, WSLENV missing the token
+
+- **WHEN** the tray app starts on Windows
+- **AND** `wsl.exe -l -q` exits 0 with non-empty output (i.e. at least one WSL distro is registered)
+- **AND** the user's persistent `WSLENV` (read from `HKCU\Environment\WSLENV`) does not include the token `WEZTERM_PANE/u`
+- **THEN** the app SHALL append `WEZTERM_PANE/u` to that value (preserving any existing tokens, separated by `:`)
+- **AND** broadcast `WM_SETTINGCHANGE` so subsequently-spawned shells inherit the new value
+- **AND** log the change at INFO level
+
+#### Scenario: WSL detected, WSLENV already configured
+
+- **WHEN** the tray app starts on Windows
+- **AND** WSL is detected
+- **AND** the user's `WSLENV` already includes `WEZTERM_PANE/u`
+- **THEN** the app SHALL make no changes and log at DEBUG level
+
+#### Scenario: WSL not detected
+
+- **WHEN** the tray app starts and `wsl.exe` is missing from `PATH`, or `wsl.exe -l -q` exits non-zero, or returns no distros
+- **THEN** the app SHALL skip the WSLENV check entirely (no env-var write, no log noise above DEBUG)
+
+#### Scenario: Non-Windows platforms
+
+- **WHEN** the tray app starts on macOS
+- **THEN** the WSLENV configuration logic SHALL be compiled out entirely (no runtime cost)
+
 ### Requirement: Plugin manifest covers Linux platforms
 
 The Claude Code plugin SHALL register its bash hook script for the `linux` platform in addition to `windows` and `darwin`, so that running `claude plugin install claude-pending-board@claude-pending-board` inside WSL registers all three hooks without manual `settings.json` editing.
