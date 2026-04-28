@@ -30,9 +30,14 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
         //      (fixes the historical always-pane[0] bug), WSL (claude_pid
         //      is unreachable from the Windows pid namespace, so the walk
         //      can never succeed), and macOS-with-wezterm.
-        //   2. Otherwise for live, non-WSL entries try the legacy ancestor
-        //      walk so iTerm2 / older boards keep working.
-        //   3. WSL entries with no captured pane id fall through to
+        //   2. If the hook captured a `tty` (iTerm2 path on macOS), use
+        //      it directly. The PTY survives claude exit, so this works
+        //      even for Stale entries where the recorded claude_pid is
+        //      dead — switching to the still-open tab beats spawning a
+        //      fresh `claude --resume` tab.
+        //   3. Otherwise for live, non-WSL entries try the legacy ancestor
+        //      walk so older boards (no stored tty) keep working.
+        //   4. WSL entries with no captured pane id fall through to
         //      spawn_resume below (last-resort: opens a fresh tab).
         let focus_target: Option<(String, TerminalMatch)> =
             if let Some(pane_id) = entry.wezterm_pane_id.clone() {
@@ -43,6 +48,16 @@ pub fn focus_entry(state: State<SharedState>, session_id: String) -> Result<Stri
                         terminal_pid: entry.terminal_pid.unwrap_or(0),
                         pane_id: Some(pane_id),
                         tty: None,
+                    },
+                ))
+            } else if entry.tty.is_some() && entry.wsl_distro.is_none() {
+                Some((
+                    "iTerm2".to_string(),
+                    TerminalMatch {
+                        terminal_name: "iTerm2".to_string(),
+                        terminal_pid: entry.terminal_pid.unwrap_or(0),
+                        pane_id: None,
+                        tty: entry.tty.clone(),
                     },
                 ))
             } else if entry.state == EntryState::Live && entry.wsl_distro.is_none() {

@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 claude-pending-board-core = { path = "../core" }
 claude-pending-board-adapters = { path = "../adapters" }
-tauri = { version = "2", features = ["tray-icon", "devtools"] }
+tauri = { version = "2", features = ["tray-icon", "devtools", "macos-private-api"] }
 tauri-plugin-single-instance = "2"
 tokio = { workspace = true }
 tracing = { workspace = true }

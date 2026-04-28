@@ -59,6 +59,14 @@ pub struct Entry {
     /// Terminal.app, etc.) or older hook versions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wezterm_pane_id: Option<String>,
+    /// Controlling tty of the claude process at hook time (e.g. `ttys003`).
+    /// Captured by the hook so click-to-focus can address the iTerm2
+    /// session by tty even after the entry goes Stale (iTerm2's PTY
+    /// outlives the claude process — the tab is still open and we can
+    /// switch to it). `None` for older hook versions or boards written
+    /// before this field existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tty: Option<String>,
 }
 
 /// Operations stored as lines in board.jsonl.
@@ -80,6 +88,9 @@ pub enum Op {
         /// See [`Entry::wezterm_pane_id`].
         #[serde(default, skip_serializing_if = "Option::is_none")]
         wezterm_pane_id: Option<String>,
+        /// See [`Entry::tty`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tty: Option<String>,
     },
     Clear {
         ts: DateTime<Utc>,

@@ -82,16 +82,28 @@ impl TerminalAdapter for ITerm2Adapter {
     }
 
     fn focus_pane(&self, terminal_match: &TerminalMatch) -> Result<(), AdapterError> {
-        let script = r#"tell application "iTerm2" to activate"#;
-        Self::run_osascript(script)?;
+        // No tty means we can't address a specific session — bring iTerm2
+        // forward and report no-pane so the caller can decide whether to
+        // fall back to spawn_resume.
+        let Some(tty) = &terminal_match.tty else {
+            Self::run_osascript(r#"tell application "iTerm2" to activate"#)?;
+            return Err(AdapterError::NoPaneFound);
+        };
 
-        if let Some(tty) = &terminal_match.tty {
-            let script = format!(
-                r#"tell application "iTerm2"
+        // Single AppleScript invocation: activate iTerm2, find the session
+        // by tty, raise its window (`set index of w to 1` — required when
+        // multiple iTerm2 windows are open, otherwise `select` only
+        // switches the tab within whichever window happens to be
+        // frontmost), then select tab + session. Returns "found" or
+        // "not_found".
+        let script = format!(
+            r#"tell application "iTerm2"
+    activate
     repeat with w in windows
         repeat with t in tabs of w
             repeat with s in sessions of t
                 if tty of s contains "{tty}" then
+                    set index of w to 1
                     select t
                     select s
                     return "found"
@@ -101,14 +113,13 @@ impl TerminalAdapter for ITerm2Adapter {
     end repeat
     return "not_found"
 end tell"#,
-                tty = tty
-            );
-            let result = Self::run_osascript(&script)?;
-            if result == "not_found" {
-                tracing::warn!(tty, "iTerm2 session with matching tty not found");
-            }
+            tty = tty
+        );
+        let result = Self::run_osascript(&script)?;
+        if result == "not_found" {
+            tracing::warn!(tty, "iTerm2 session with matching tty not found");
+            return Err(AdapterError::NoPaneFound);
         }
-
         Ok(())
     }
 
@@ -120,22 +131,55 @@ end tell"#,
         // accepted for trait compatibility and ignored.
         _wsl_distro: Option<&str>,
     ) -> Result<(), AdapterError> {
-        let cwd_str = cwd.to_string_lossy();
+        // Earlier versions passed `cd ... && claude --resume ...` as the
+        // `command` argument to iTerm2's `create tab`. iTerm2 exec()s that
+        // string directly without any shell, so `cd` (a builtin) and `&&`
+        // are not understood — iTerm2 reports "session ended very soon
+        // after starting" and the tab disappears. Instead, create the
+        // tab with the user's default profile (which launches their
+        // shell) and feed each line via `write text`.
+        let cd_line = format!("cd {}", shell_double_quote(&cwd.to_string_lossy()));
+        let resume_line = format!("claude --resume {session_id}");
+
         let script = format!(
             r#"tell application "iTerm2"
     activate
+    if (count of windows) is 0 then
+        create window with default profile
+    end if
     tell current window
-        create tab with default profile command "cd {cwd} && claude --resume {session_id}"
+        set newTab to (create tab with default profile)
+        tell current session of newTab
+            write text "{cd}"
+            write text "{resume}"
+        end tell
     end tell
 end tell"#,
-            cwd = cwd_str,
-            session_id = session_id
+            cd = applescript_escape(&cd_line),
+            resume = applescript_escape(&resume_line)
         );
         Self::run_osascript(&script)?;
 
         tracing::info!(session_id, cwd = %cwd.display(), "spawned resume in new iTerm2 tab");
         Ok(())
     }
+}
+
+fn shell_double_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        if matches!(c, '"' | '\\' | '$' | '`') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out.push('"');
+    out
+}
+
+fn applescript_escape(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 #[cfg(test)]
@@ -162,5 +206,22 @@ mod tests {
             adapter.is_available(),
             "iTerm2 not found at /Applications/iTerm.app"
         );
+    }
+
+    #[test]
+    fn test_shell_double_quote() {
+        assert_eq!(shell_double_quote("/Users/x"), r#""/Users/x""#);
+        assert_eq!(shell_double_quote("with space"), r#""with space""#);
+        assert_eq!(shell_double_quote(r#"a"b"#), r#""a\"b""#);
+        assert_eq!(shell_double_quote(r"a\b"), r#""a\\b""#);
+        assert_eq!(shell_double_quote("a$b"), r#""a\$b""#);
+        assert_eq!(shell_double_quote("a`b"), r#""a\`b""#);
+    }
+
+    #[test]
+    fn test_applescript_escape() {
+        assert_eq!(applescript_escape(r#"a"b"#), r#"a\"b"#);
+        assert_eq!(applescript_escape(r"a\b"), r"a\\b");
+        assert_eq!(applescript_escape("plain"), "plain");
     }
 }

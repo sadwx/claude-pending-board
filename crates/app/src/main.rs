@@ -23,6 +23,21 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .manage(shared_state.clone())
         .setup(move |app| {
+            // Run as a menu-bar agent on macOS — no Dock icon, no app-switcher
+            // entry. The HUD and Settings windows still appear when shown;
+            // closing the last window does not exit the app (tray keeps it
+            // alive). Must come before any window is shown.
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // Best-effort: keep the installed plugin.json clean of hook
+            // entries for other OSes. Claude Code 2.1.x ignores the
+            // `platform` field on hook entries, so without this they show
+            // up in `/hooks` and ENOENT on every fire. Non-fatal on error.
+            tauri::async_runtime::spawn_blocking(|| {
+                let _ = plugin_install::sanitize_installed_plugin_json();
+            });
+
             // Build the HUD window before booting services so the async op pipeline
             // can always find it via get_webview_window("hud"). Without this, ops
             // loaded from a non-empty board.jsonl at startup can race the window
@@ -36,6 +51,7 @@ fn main() {
             .inner_size(380.0, 440.0)
             .resizable(false)
             .decorations(false)
+            .transparent(true)
             .always_on_top(true)
             .visible(false)
             .skip_taskbar(true)
