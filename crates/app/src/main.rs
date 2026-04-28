@@ -6,6 +6,8 @@ mod plugin_install;
 mod services;
 mod state;
 mod tray;
+#[cfg(target_os = "windows")]
+mod wsl_env_setup;
 
 use state::{AppState, SharedState};
 use std::sync::{Arc, Mutex};
@@ -66,6 +68,14 @@ fn main() {
 
             services::boot(app.handle(), shared_state.clone());
             tray::setup(app)?;
+
+            // Auto-configure WSLENV so click-to-focus works for WSL-origin
+            // entries without manual `setx` from the user. Runs in a
+            // blocking task — touches the registry and may shell out to
+            // PowerShell for the broadcast on first run, neither of which
+            // should hold up app boot.
+            #[cfg(target_os = "windows")]
+            tauri::async_runtime::spawn_blocking(wsl_env_setup::ensure_wezterm_pane_in_wslenv);
 
             tracing::info!("Claude Pending Board started");
             Ok(())

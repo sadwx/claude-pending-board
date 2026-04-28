@@ -38,6 +38,17 @@ WEZTERM_PANE click-to-focus (bundled in):
 - [x] Tests: parser round-trip with and without `wezterm_pane_id`.
 - [x] Document the `WSLENV=WEZTERM_PANE/u` one-time setup in `INSTALL.md` for WSL users (without it, WSL hooks fire fine but the env var doesn't cross the boundary, so click falls back to spawn_resume).
 
+## PR-D · Automatic WSLENV configuration
+
+- [ ] New module `crates/app/src/wsl_env_setup.rs`, gated `#[cfg(target_os = "windows")]`. Public entry point `ensure_wezterm_pane_in_wslenv()`.
+- [ ] Detection: shell out `wsl.exe -l -q`. Treat exit-0-with-output as "WSL configured", anything else (missing binary, non-zero exit, empty output) as "not configured".
+- [ ] Read current `WSLENV` from `HKCU\Environment` via the `windows` crate's registry APIs. Treat absent / empty as "no current value".
+- [ ] Pure-string helper `merge_wslenv(current: &str, token: &str) -> Option<String>` — returns `Some(new)` if the token is missing and needs appending, `None` if it's already present. Tokens are colon-separated; comparison is case-sensitive on the var name.
+- [ ] Write the merged value back to the same registry key and broadcast `WM_SETTINGCHANGE` with `lParam = "Environment"` so explorer.exe propagates the change to subsequently-spawned shells.
+- [ ] Wire into `tauri::Builder::setup()` as a `spawn_blocking` task — must not block app boot. Errors are logged at WARN, not surfaced to the user.
+- [ ] Unit tests for `merge_wslenv`: empty input, input already containing the token (idempotent), input with other tokens, edge cases (leading/trailing colons).
+- [ ] Update `INSTALL.md` Step 2.5: replace the manual `setx WSLENV …` instruction with "the tray app handles this for you on first launch — open a fresh WezTerm tab afterward to pick up the change."
+
 ## Validation gate (before tagging v0.2)
 
 - [ ] PR-A merged: WSL PoC entries on Simon's machine no longer go stale within seconds. Wait at least one reaper sweep (30 s) after firing a WSL hook and confirm the entry is still `Live`.

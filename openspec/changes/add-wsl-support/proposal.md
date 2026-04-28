@@ -24,6 +24,7 @@ Three failure modes block a clean shipping experience today:
 - **ADDED** *WSL distro identification on board entries* — bash hook emits `"wsl_distro": "<name>"` on every op when `$WSL_DISTRO_NAME` is set; absent otherwise.
 - **ADDED** *WezTerm pane identification on board entries* — both hook scripts emit `"wezterm_pane_id": "<id>"` when `$WEZTERM_PANE` is set, so click-to-focus can address an existing pane via `wezterm cli activate-pane` instead of guessing through the process tree.
 - **ADDED** *Plugin manifest covers Linux platforms* — bash hook is registered for `platform: "linux"` in addition to `darwin`, so `claude plugin install` works inside WSL without manual `settings.json` editing. Reverses the relevant slice of `af26a1e`.
+- **ADDED** *Automatic WSLENV configuration on Windows* — the tray app idempotently merges `WEZTERM_PANE/u` into the user's persistent `WSLENV` on every launch when WSL is detected, so click-to-focus works for WSL-origin entries with zero manual user setup.
 
 ## Out of scope
 
