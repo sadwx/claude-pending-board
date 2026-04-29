@@ -98,6 +98,18 @@ impl WezTermAdapter {
         Ok(())
     }
 
+    /// Bring the WezTerm GUI window to the foreground after activating a
+    /// pane. `wezterm cli activate-pane` only switches *within* WezTerm —
+    /// if WezTerm is minimized or behind another window, the user
+    /// silently sees nothing happen until they alt-tab over.
+    fn raise_wezterm_window() {
+        #[cfg(target_os = "windows")]
+        raise_window_windows();
+
+        #[cfg(target_os = "macos")]
+        raise_window_macos();
+    }
+
     fn find_pane_for_pid(claude_pid: u32, panes: &[WezTermPane]) -> Option<(u64, TerminalMatch)> {
         let (terminal_name, terminal_pid) =
             claude_pending_board_core::terminal::ancestor_walk(claude_pid, 20)?;
@@ -115,6 +127,129 @@ impl WezTermAdapter {
         }
 
         None
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn raise_window_windows() {
+    use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
+    use windows::core::BOOL;
+    use windows::Win32::Foundation::{HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowThreadProcessId, IsIconic, IsWindowVisible,
+        SetForegroundWindow, ShowWindow, GW_OWNER, SW_RESTORE,
+    };
+
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::everything(),
+    );
+    let pids: Vec<u32> = sys
+        .processes()
+        .iter()
+        .filter_map(|(pid, p)| {
+            if p.name().eq_ignore_ascii_case("wezterm-gui.exe") {
+                Some(pid.as_u32())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if pids.is_empty() {
+        tracing::debug!("no wezterm-gui process; cannot raise window");
+        return;
+    }
+
+    struct Ctx {
+        target_pids: Vec<u32>,
+        found_hwnd: Option<HWND>,
+    }
+    let mut ctx = Ctx {
+        target_pids: pids,
+        found_hwnd: None,
+    };
+
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let ctx = unsafe { &mut *(lparam.0 as *mut Ctx) };
+        let mut pid: u32 = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32)) };
+        if !ctx.target_pids.contains(&pid) {
+            return BOOL(1);
+        }
+        if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
+            return BOOL(1);
+        }
+        // Top-level only — skip child / owned popups.
+        if let Ok(owner) = unsafe { GetWindow(hwnd, GW_OWNER) } {
+            if !owner.is_invalid() {
+                return BOOL(1);
+            }
+        }
+        ctx.found_hwnd = Some(hwnd);
+        BOOL(0)
+    }
+
+    unsafe {
+        let _ = EnumWindows(Some(enum_proc), LPARAM(&mut ctx as *mut _ as isize));
+    }
+
+    let Some(hwnd) = ctx.found_hwnd else {
+        tracing::debug!("no top-level wezterm-gui window found; cannot raise");
+        return;
+    };
+
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let raised = SetForegroundWindow(hwnd).as_bool();
+        if !raised {
+            tracing::debug!(
+                "SetForegroundWindow refused — focus-stealing prevention may have suppressed the raise"
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn raise_window_macos() {
+    use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
+
+    // Skip if no wezterm-gui is running. `tell application "WezTerm" to
+    // activate` would otherwise *launch* WezTerm — surprising for a
+    // click-to-focus that should land on an existing pane.
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::everything(),
+    );
+    let running = sys.processes().values().any(|p| {
+        p.name()
+            .to_string_lossy()
+            .eq_ignore_ascii_case("wezterm-gui")
+    });
+    if !running {
+        tracing::debug!("no wezterm-gui process; skipping osascript activate");
+        return;
+    }
+
+    let output = Command::new("osascript")
+        .args(["-e", r#"tell application "WezTerm" to activate"#])
+        .output();
+    match output {
+        Ok(out) if out.status.success() => {
+            tracing::debug!("raised WezTerm via osascript");
+        }
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            tracing::debug!(stderr = %stderr, "osascript activate failed");
+        }
+        Err(e) => {
+            tracing::debug!(error = %e, "failed to spawn osascript");
+        }
     }
 }
 
@@ -140,7 +275,11 @@ impl TerminalAdapter for WezTermAdapter {
             .parse()
             .map_err(|e| AdapterError::CommandFailed(format!("invalid pane_id: {e}")))?;
 
-        Self::activate_pane(pane_id)
+        Self::activate_pane(pane_id)?;
+        // activate-pane only switches inside WezTerm; raise the OS window
+        // too so the user actually sees the result.
+        Self::raise_wezterm_window();
+        Ok(())
     }
 
     fn spawn_resume(
