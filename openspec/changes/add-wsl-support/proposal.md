@@ -14,7 +14,7 @@ Three failure modes block a clean shipping experience today:
 
 1. **Plugin manifest doesn't fire on Linux.** The `platform: "darwin"` gate on the bash hook means `claude plugin install …` inside WSL silently registers nothing.
 2. **Reaper false-stales WSL entries.** It checks the **Windows** process table for `claude_pid`. WSL pids aren't there, so every WSL entry transitions to `stale` within the next 30-second sweep — entries that are actually live get the dim styling immediately.
-3. **Click-to-focus is broken across the WSL boundary.** Clicking a stale WSL entry triggers `wezterm cli spawn` with the Linux `cwd` (e.g. `/home/simon/project`) which Windows WezTerm cannot enter, and `claude --resume <id>` runs on Windows where the WSL session ID doesn't exist. The new tab dies on launch.
+3. **Click-to-focus is broken across the WSL boundary.** Clicking a stale WSL entry triggers `wezterm cli spawn` with the Linux `cwd` (e.g. `/home/user/project`) which Windows WezTerm cannot enter, and `claude --resume <id>` runs on Windows where the WSL session ID doesn't exist. The new tab dies on launch.
 
 ## What Changes
 

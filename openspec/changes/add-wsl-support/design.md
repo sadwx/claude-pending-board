@@ -54,10 +54,10 @@ We deliberately do **not** restore the Linux entries to `release.yml` (no `.deb`
 
 ## WezTerm adapter — cwd translation
 
-When the WezTerm adapter receives a focus / spawn request for an entry with `Some(wsl_distro)`, the existing `cwd` (a Linux path like `/home/simon/project`) is unusable. WSL exposes Linux files to Windows under `\\wsl$\<distro>\…`, so:
+When the WezTerm adapter receives a focus / spawn request for an entry with `Some(wsl_distro)`, the existing `cwd` (a Linux path like `/home/user/project`) is unusable. WSL exposes Linux files to Windows under `\\wsl$\<distro>\…`, so:
 
 ```
-/home/simon/project      →    \\wsl$\Ubuntu-24.04\home\simon\project
+/home/user/project      →    \\wsl$\Ubuntu-24.04\home\user\project
 /var/log                 →    \\wsl$\Ubuntu-24.04\var\log
 ```
 
@@ -68,7 +68,7 @@ The translation is a string-prefix swap, no escaping, no path canonicalization. 
 `claude --resume <session_id>` on Windows looks at `~/.claude/sessions/<pid>.json` files written by Windows-side Claude. WSL sessions are never registered there. To resume a WSL session, the resume command must run **inside** the same WSL distro that produced the entry:
 
 ```
-wezterm cli spawn --cwd '\\wsl$\Ubuntu-24.04\home\simon\project' \
+wezterm cli spawn --cwd '\\wsl$\Ubuntu-24.04\home\user\project' \
   -- wsl.exe -d Ubuntu-24.04 -e claude --resume <session_id>
 ```
 

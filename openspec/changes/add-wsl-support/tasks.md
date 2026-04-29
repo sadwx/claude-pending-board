@@ -18,8 +18,8 @@ Implementation is split across three PRs. PR-A and PR-C are the critical path; P
 - [x] Add a helper `wsl_cwd_to_unc(distro: &str, linux_cwd: &Path) -> String` that produces `\\wsl$\<distro>\<rest>`. Pure string transform, no I/O.
 - [x] Build the resume command as `wsl.exe -d <distro> -e claude --resume <session_id>` and pass `--cwd <unc>` to `wezterm cli spawn`.
 - [x] Threading note: `Adapter::spawn_resume` currently takes `(cwd, session_id)`. Widen to `(cwd, session_id, wsl_distro: Option<&str>)` to keep the diff small. (Passing the whole `Entry` is a future option but premature for this PR.)
-- [x] Tests: `wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/home/simon/project")) → "\\\\wsl$\\Ubuntu-24.04\\home\\simon\\project"` etc.
-- [x] Manual smoke on Simon's WSL: trigger a permission prompt in WSL Claude, verify HUD entry stays live, click → new WezTerm tab opens with WSL cwd and resumes the session.
+- [x] Tests: `wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/home/user/project")) → "\\\\wsl$\\Ubuntu-24.04\\home\\user\\project"` etc.
+- [x] Manual smoke on the maintainer's WSL: trigger a permission prompt in WSL Claude, verify HUD entry stays live, click → new WezTerm tab opens with WSL cwd and resumes the session.
 
 ## PR-B · Plugin manifest + WEZTERM_PANE click-to-focus
 
@@ -51,9 +51,9 @@ WEZTERM_PANE click-to-focus (bundled in):
 
 ## Validation gate (before tagging v0.2)
 
-- [ ] PR-A merged: WSL PoC entries on Simon's machine no longer go stale within seconds. Wait at least one reaper sweep (30 s) after firing a WSL hook and confirm the entry is still `Live`.
+- [ ] PR-A merged: WSL PoC entries on the test machine no longer go stale within seconds. Wait at least one reaper sweep (30 s) after firing a WSL hook and confirm the entry is still `Live`.
 - [ ] PR-C merged: clicking a WSL entry opens a WezTerm tab inside the right distro and runs `claude --resume`; the prompt actually returns to the user.
-- [ ] PR-B merged: in WSL, `claude plugin install claude-pending-board@claude-pending-board` registers all three hooks without manual settings.json editing. Simon reverts his PoC settings.json (backup is at `~/.claude/settings.json.pre-pending-board-poc`).
+- [ ] PR-B merged: in WSL, `claude plugin install claude-pending-board@claude-pending-board` registers all three hooks without manual settings.json editing. The maintainer reverts the PoC settings.json (backup is at `~/.claude/settings.json.pre-pending-board-poc`).
 - [ ] Documentation: `INSTALL.md` has a "WSL" section with the caveats listed above.
 
 ## Deferred to a later change

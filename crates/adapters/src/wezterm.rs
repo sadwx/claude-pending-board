@@ -341,7 +341,7 @@ impl TerminalAdapter for WezTermAdapter {
 /// WezTerm adapter when spawning a new tab for a WSL-origin entry — `wezterm
 /// cli spawn` runs on the Windows side and can't `cd` into a Linux path.
 ///
-/// `/home/simon/project` → `\\wsl$\Ubuntu-24.04\home\simon\project`
+/// `/home/user/project` → `\\wsl$\Ubuntu-24.04\home\user\project`
 /// `/`                   → `\\wsl$\Ubuntu-24.04\`
 pub(crate) fn wsl_cwd_to_unc(distro: &str, linux_cwd: &Path) -> String {
     let path_str = linux_cwd.to_string_lossy();
@@ -417,8 +417,8 @@ mod tests {
 
     #[test]
     fn test_wsl_cwd_to_unc_typical_home() {
-        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/home/simon/project"));
-        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\simon\project");
+        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("/home/user/project"));
+        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\user\project");
     }
 
     #[test]
@@ -431,8 +431,8 @@ mod tests {
     fn test_wsl_cwd_to_unc_no_leading_slash() {
         // Defensive: a relative-ish path (no leading slash) shouldn't double
         // the prefix or panic.
-        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("home/simon"));
-        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\simon");
+        let result = wsl_cwd_to_unc("Ubuntu-24.04", Path::new("home/user"));
+        assert_eq!(result, r"\\wsl$\Ubuntu-24.04\home\user");
     }
 
     #[test]

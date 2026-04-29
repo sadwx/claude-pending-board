@@ -34,13 +34,13 @@ Write-Host ""
 # --- Step 1: Permission prompt ---
 Show-Header 1 "Add a permission_prompt entry"
 $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-Write-Board "{`"op`":`"add`",`"ts`":`"$ts`",`"session_id`":`"smoke-1`",`"cwd`":`"D:/lab/suxi/claude-pending-board`",`"claude_pid`":99999,`"terminal_pid`":null,`"transcript_path`":`"/tmp/t.jsonl`",`"notification_type`":`"permission_prompt`",`"message`":`"May I run cargo test?`"}"
+Write-Board "{`"op`":`"add`",`"ts`":`"$ts`",`"session_id`":`"smoke-1`",`"cwd`":`"C:/example/project-a`",`"claude_pid`":99999,`"terminal_pid`":null,`"transcript_path`":`"/tmp/t.jsonl`",`"notification_type`":`"permission_prompt`",`"message`":`"May I run cargo test?`"}"
 Pause-Step "HUD should appear with 1 red PERMISSION entry"
 
 # --- Step 2: Idle prompt ---
 Show-Header 2 "Add an idle_prompt entry"
 $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-Write-Board "{`"op`":`"add`",`"ts`":`"$ts`",`"session_id`":`"smoke-2`",`"cwd`":`"D:/lab/pyground`",`"claude_pid`":88888,`"terminal_pid`":null,`"transcript_path`":`"/tmp/t2.jsonl`",`"notification_type`":`"idle_prompt`",`"message`":`"What would you like to do next?`"}"
+Write-Board "{`"op`":`"add`",`"ts`":`"$ts`",`"session_id`":`"smoke-2`",`"cwd`":`"C:/example/project-b`",`"claude_pid`":88888,`"terminal_pid`":null,`"transcript_path`":`"/tmp/t2.jsonl`",`"notification_type`":`"idle_prompt`",`"message`":`"What would you like to do next?`"}"
 Pause-Step "HUD should show 2 groups: PERMISSION (red) + IDLE (blue)"
 
 # --- Step 3: Clear one entry ---

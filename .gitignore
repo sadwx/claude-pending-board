@@ -5,7 +5,9 @@
 /target/
 **/target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock IS committed (this is a binary application) so builds are
+# reproducible across environments and contributors get the same
+# transitive dep versions for the security/audit story.
 
 # Tauri (Phase 3)
 crates/app/src-tauri/target/

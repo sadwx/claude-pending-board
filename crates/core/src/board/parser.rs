@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_parse_add_op_with_wsl_distro() {
-        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/home/simon/project","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m","wsl_distro":"Ubuntu-24.04"}"#;
+        let line = r#"{"op":"add","ts":"2026-04-16T10:00:00Z","session_id":"a","cwd":"/home/user/project","claude_pid":1,"terminal_pid":null,"transcript_path":"/tmp/t","notification_type":"permission_prompt","message":"m","wsl_distro":"Ubuntu-24.04"}"#;
         let op = parse_line(line).unwrap();
         match op {
             Op::Add { wsl_distro, .. } => assert_eq!(wsl_distro.as_deref(), Some("Ubuntu-24.04")),
