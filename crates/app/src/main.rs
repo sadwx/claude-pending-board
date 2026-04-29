@@ -90,8 +90,35 @@ fn main() {
             // blocking task — touches the registry and may shell out to
             // PowerShell for the broadcast on first run, neither of which
             // should hold up app boot.
+            //
+            // After the registry write, if WezTerm is already running, its
+            // env is now stale: WezTerm captures WSLENV at launch and never
+            // re-reads it, so WSL panes inherit the old value and the bash
+            // hook can't see WEZTERM_PANE. Surface a one-shot warning to
+            // the HUD so the user knows to restart WezTerm.
             #[cfg(target_os = "windows")]
-            tauri::async_runtime::spawn_blocking(wsl_env_setup::ensure_wezterm_pane_in_wslenv);
+            {
+                use tauri::{Emitter, Manager};
+                let warning_state = shared_state.clone();
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let status = wsl_env_setup::ensure_wezterm_pane_in_wslenv();
+                    if status == wsl_env_setup::Status::Updated
+                        && wsl_env_setup::wezterm_gui_running()
+                    {
+                        tracing::warn!(
+                            "WSLENV updated while wezterm-gui is running — restart WezTerm \
+                             so WSL panes pick up WEZTERM_PANE/u; click-to-focus into WSL \
+                             will fall back to spawn-a-new-tab until then"
+                        );
+                        warning_state.lock().unwrap().wezterm_stale_warning = true;
+                        let _ = app_handle.emit("wezterm-stale-warning", ());
+                        if let Some(window) = app_handle.get_webview_window("hud") {
+                            crate::hud_show::show_without_activation(&window);
+                        }
+                    }
+                });
+            }
 
             tracing::info!("Claude Pending Board started");
             Ok(())
@@ -101,6 +128,7 @@ fn main() {
             commands::focus_entry,
             commands::dismiss_hud,
             commands::dismiss_panel_opened,
+            commands::take_wezterm_stale_warning,
             commands::manual_open,
             commands::open_settings,
             commands::hide_settings,

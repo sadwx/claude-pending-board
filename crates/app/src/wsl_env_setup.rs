@@ -15,10 +15,23 @@ use std::process::Command;
 const TOKEN: &str = "WEZTERM_PANE/u";
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-pub fn ensure_wezterm_pane_in_wslenv() {
+/// Outcome of a single `ensure_wezterm_pane_in_wslenv` run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Status {
+    /// HKCU already contained the token; nothing was written.
+    Unchanged,
+    /// HKCU was rewritten with a new value — any process launched before
+    /// this point (notably wezterm-gui) is now running with stale env.
+    Updated,
+    /// WSL not detected, or the registry write failed; no env change took
+    /// effect this run.
+    NoOp,
+}
+
+pub fn ensure_wezterm_pane_in_wslenv() -> Status {
     if !wsl_detected() {
         tracing::debug!("WSL not detected; skipping WSLENV setup");
-        return;
+        return Status::NoOp;
     }
 
     // Windows merges WSLENV from HKLM (machine) and HKCU (user) when launching
@@ -35,14 +48,37 @@ pub fn ensure_wezterm_pane_in_wslenv() {
                 user_new = %new_value,
                 "appending WEZTERM_PANE/u to user WSLENV"
             );
-            if let Err(e) = write_user_wslenv(&new_value) {
-                tracing::warn!(error = %e, "failed to update WSLENV — click-to-focus inside WSL will fall back to spawn-a-new-tab");
+            match write_user_wslenv(&new_value) {
+                Ok(()) => Status::Updated,
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to update WSLENV — click-to-focus inside WSL will fall back to spawn-a-new-tab");
+                    Status::NoOp
+                }
             }
         }
         None => {
             tracing::debug!("WSLENV already includes {}; nothing to do", TOKEN);
+            Status::Unchanged
         }
     }
+}
+
+/// True if at least one `wezterm-gui.exe` process is currently running.
+///
+/// Used after a successful `Updated` to decide whether to surface a "restart
+/// WezTerm" warning: WezTerm captures its WSLENV at launch and never re-reads
+/// it, so a running instance has stale env after we updated HKCU.
+pub fn wezterm_gui_running() -> bool {
+    use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::everything(),
+    );
+    sys.processes()
+        .values()
+        .any(|p| p.name().eq_ignore_ascii_case("wezterm-gui.exe"))
 }
 
 fn wsl_detected() -> bool {

@@ -452,3 +452,57 @@ html, body {
 
 .section-label { display: none; }
 .entry-icon { display: none; }
+
+.hud-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px 8px 12px;
+  margin: 0 10px 6px;
+  background: rgba(241, 250, 140, 0.09);
+  border: 1px solid rgba(241, 250, 140, 0.28);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--drac-subtext);
+}
+.hud-banner.hidden { display: none; }
+.hud-banner .banner-icon {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 11px;
+  background: rgba(241, 250, 140, 0.12);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--drac-yellow);
+}
+.hud-banner .banner-text {
+  flex: 1;
+  color: var(--drac-subtext);
+}
+.hud-banner .banner-text strong {
+  color: var(--drac-fg);
+  font-weight: 600;
+}
+.hud-banner .banner-text code {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--drac-current);
+  color: var(--drac-yellow);
+}
+.hud-banner .banner-dismiss {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--drac-comment);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms, color 120ms;
+}
+.hud-banner .banner-dismiss:hover {
+  background: var(--drac-current);
+  color: var(--drac-fg);
+}

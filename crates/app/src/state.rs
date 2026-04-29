@@ -10,6 +10,11 @@ pub struct AppState {
     pub visibility: VisibilityController,
     pub config: Config,
     pub adapter_registry: AdapterRegistry,
+    /// Set by the WSLENV setup pass when it rewrites HKCU and detects a
+    /// running wezterm-gui — meaning that WezTerm is still using its old
+    /// WSLENV and click-to-focus into WSL won't work until the user
+    /// restarts it. Consumed once by the HUD on init.
+    pub wezterm_stale_warning: bool,
 }
 
 pub type SharedState = Arc<Mutex<AppState>>;
@@ -26,6 +31,7 @@ impl AppState {
             visibility,
             config,
             adapter_registry,
+            wezterm_stale_warning: false,
         }
     }
 
