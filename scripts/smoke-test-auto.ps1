@@ -12,7 +12,7 @@
 # Those require manual testing — see scripts/smoke-test.ps1.
 
 param(
-    [string]$AppPath = "D:/lab/suxi/claude-pending-board/target/debug/claude-pending-board-app.exe",
+    [string]$AppPath = (Join-Path $PSScriptRoot ".." "target" "debug" "claude-pending-board-app.exe"),
     [int]$ReaperWaitSeconds = 35
 )
 

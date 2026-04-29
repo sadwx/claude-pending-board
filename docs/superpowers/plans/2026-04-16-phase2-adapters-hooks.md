@@ -782,7 +782,7 @@ exit 0
 
 - [ ] **Step 2: Verify the script is syntactically valid**
 
-Run: `pwsh -NoProfile -Command "& { $null = [System.Management.Automation.Language.Parser]::ParseFile('D:/lab/suxi/claude-pending-board/scripts/pending_hook.ps1', [ref]$null, [ref]$null) ; Write-Host 'Parse OK' }"`
+Run: `pwsh -NoProfile -Command "& { $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path './plugin/hooks/pending_hook.ps1'), [ref]$null, [ref]$null) ; Write-Host 'Parse OK' }"` from the repo root.
 Expected: `Parse OK`
 
 - [ ] **Step 3: Test with a sample Notification payload**
