@@ -1,6 +1,6 @@
 {
   "productName": "Claude Pending Board",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "identifier": "com.claude-pending-board.app",
   "build": {
     "frontendDist": "ui"
