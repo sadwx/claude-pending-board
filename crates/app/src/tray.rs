@@ -21,10 +21,12 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             "open" => {
                 let state: tauri::State<crate::state::SharedState> = app.state();
                 let mut s = state.lock().unwrap();
-                let action = s
-                    .visibility
-                    .handle(claude_pending_board_core::visibility::VisibilityEvent::ManualOpen);
                 let entries = s.entries();
+                let action = s.visibility.handle(
+                    claude_pending_board_core::visibility::VisibilityEvent::ManualOpen {
+                        board_count: entries.len(),
+                    },
+                );
                 drop(s);
 
                 if action == claude_pending_board_core::visibility::VisibilityAction::ShowHud {
@@ -54,10 +56,12 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 let app = tray.app_handle();
                 let state: tauri::State<crate::state::SharedState> = app.state();
                 let mut s = state.lock().unwrap();
-                let action = s
-                    .visibility
-                    .handle(claude_pending_board_core::visibility::VisibilityEvent::ManualOpen);
                 let entries = s.entries();
+                let action = s.visibility.handle(
+                    claude_pending_board_core::visibility::VisibilityEvent::ManualOpen {
+                        board_count: entries.len(),
+                    },
+                );
                 drop(s);
 
                 if action == claude_pending_board_core::visibility::VisibilityAction::ShowHud {

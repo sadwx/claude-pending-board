@@ -139,8 +139,10 @@ pub fn dismiss_hud(
 #[tauri::command]
 pub fn manual_open(app: AppHandle, state: State<SharedState>) -> Result<(), String> {
     let mut s = state.lock().unwrap();
-    let action = s.visibility.handle(VisibilityEvent::ManualOpen);
     let entries = s.entries();
+    let action = s.visibility.handle(VisibilityEvent::ManualOpen {
+        board_count: entries.len(),
+    });
     drop(s);
 
     if action == VisibilityAction::ShowHud {
