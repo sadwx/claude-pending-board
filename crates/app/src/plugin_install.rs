@@ -99,8 +99,8 @@ pub fn install() -> Result<(), String> {
 /// Find the on-disk plugin.json that Claude Code loads from
 /// (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/.claude-plugin/plugin.json`)
 /// and rewrite it to drop hook entries whose `platform` doesn't match the
-/// current OS.
-pub fn sanitize_installed_plugin_json() -> Result<(), String> {
+/// current OS. Returns the number of removed entries (0 if already clean).
+pub fn sanitize_installed_plugin_json() -> Result<usize, String> {
     let path = locate_installed_plugin_json()?;
     let raw = std::fs::read_to_string(&path).map_err(|e| format!("read {path:?}: {e}"))?;
     let mut value: serde_json::Value =
@@ -108,14 +108,14 @@ pub fn sanitize_installed_plugin_json() -> Result<(), String> {
 
     let removed = strip_foreign_platform_hooks(&mut value, current_platform());
     if removed == 0 {
-        return Ok(());
+        return Ok(0);
     }
 
     let pretty =
         serde_json::to_string_pretty(&value).map_err(|e| format!("serialize plugin.json: {e}"))?;
     std::fs::write(&path, pretty).map_err(|e| format!("write {path:?}: {e}"))?;
     tracing::info!(removed, ?path, "stripped foreign-platform hook entries");
-    Ok(())
+    Ok(removed)
 }
 
 fn locate_installed_plugin_json() -> Result<PathBuf, String> {

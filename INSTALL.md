@@ -102,6 +102,19 @@ Changes apply immediately — no restart needed.
 
 ## Troubleshooting
 
+### `/hooks` shows pwsh entries on macOS/Linux (or bash entries on Windows)
+
+Claude Code 2.1.x ignores the `platform` field on hook entries, so the bundled `plugin.json` ships with one entry per OS for each event and Claude Code lists them all. The tray app strips foreign-platform entries from the installed `plugin.json` on every startup — but if you don't keep the tray app running, a fresh `claude plugin install` / auto-update will leave the foreign entries in place until next launch.
+
+If you want the cleanup without launching the app, run the binary with `--sanitize-manifest`:
+
+```bash
+claude-pending-board-app --sanitize-manifest        # macOS / Linux
+"C:\Program Files\Claude Pending Board\claude-pending-board-app.exe" --sanitize-manifest   # Windows
+```
+
+It exits immediately after rewriting `~/.claude/plugins/cache/.../plugin.json`. Idempotent — running it on an already-clean manifest is a no-op. Wire it to a `launchd`/`systemd`/Task Scheduler unit if you want it to run automatically after each `claude plugin update`.
+
 ### The HUD never appears when I trigger a permission prompt
 
 1. Reopen the HUD (tray left-click). If it shows the "Hooks not installed" setup card, the plugin step was skipped — run the install from the card or the CLI commands above.
