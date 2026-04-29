@@ -20,3 +20,10 @@ crates/app/src-tauri/target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Personal Claude Code state (local-only, per-clone)
+.claude/settings.local.json
+**/CLAUDE.local.md
+
+# Personal scratch / planning notes
+tasks/
