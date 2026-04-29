@@ -172,14 +172,14 @@ To run in dev mode with hot reload:
 cargo tauri dev
 ```
 
-Hook scripts live in `scripts/` and can be invoked directly while iterating — pipe a sample JSON payload into the script and check `~/.claude/pending/board.jsonl`:
+Hook scripts live in `plugin/hooks/` (single source of truth — also what the plugin marketplace ships) and can be invoked directly while iterating — pipe a sample JSON payload into the script and check `~/.claude/pending/board.jsonl`:
 
 ```powershell
 # Windows
-'{"hook_event_name":"Notification","session_id":"...","cwd":"...","transcript_path":"...","notification_type":"permission_prompt","message":"Test"}' | pwsh -File scripts/pending_hook.ps1
+'{"hook_event_name":"Notification","session_id":"...","cwd":"...","transcript_path":"...","notification_type":"permission_prompt","message":"Test"}' | pwsh -File plugin/hooks/pending_hook.ps1
 ```
 
 ```bash
-# macOS
-echo '{"hook_event_name":"Notification","session_id":"...","cwd":"...","transcript_path":"...","notification_type":"permission_prompt","message":"Test"}' | bash scripts/pending_hook.sh
+# macOS / WSL
+echo '{"hook_event_name":"Notification","session_id":"...","cwd":"...","transcript_path":"...","notification_type":"permission_prompt","message":"Test"}' | bash plugin/hooks/pending_hook.sh
 ```
