@@ -1,16 +1,14 @@
 name: Auto-bump plugin version
 
-# Appends the short commit SHA to `plugin/.claude-plugin/plugin.json`'s
-# `version` field on every push to main, then commits and pushes the
+# Bumps the patch number across `Cargo.toml`, `plugin/.claude-plugin/plugin.json`,
+# and `crates/app/tauri.conf.json` on every push to main, then commits the
 # update so `claude plugin update` always sees a new version and pulls
-# the latest. The base version (before `+sha.…`) is read from the
-# workspace `Cargo.toml`.
+# the latest hooks.
 #
-# Why: Claude Code only delivers updates when the manifest's `version`
-# field changes. Omitting `version` entirely uses the commit SHA
-# internally, but the SHA isn't surfaced to users via `claude plugin
-# list`. By writing `<base>+sha.<short-sha>` we get both: every commit
-# is a new version AND the SHA is visible in the plugin manager UI.
+# Skips itself when the push already touched one of those three files —
+# i.e. a human deliberately bumped the version (typically a major/minor
+# bump on a release commit). That preserves human-controlled bumps and
+# avoids stepping on `0.3.0 → 0.3.1` immediately after a release.
 #
 # Loop safety: pushes made with `secrets.GITHUB_TOKEN` do NOT trigger
 # new workflow runs (per GitHub Actions docs), so the auto-commit this
@@ -31,43 +29,72 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compute new plugin version
+      - name: Detect manual version edit in this push
+        id: manual
+        run: |
+          # Compare the merge commit (or direct push commit) against its
+          # first parent to see if the human already touched any version
+          # file.
+          changed=$(git diff HEAD~1 HEAD --name-only)
+          echo "Files changed in this push:"
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(Cargo\.toml|plugin/\.claude-plugin/plugin\.json|crates/app/tauri\.conf\.json)$'; then
+            echo "Human-controlled version change detected; skipping auto-bump."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next plain-semver version
+        if: steps.manual.outputs.skip == 'false'
         id: ver
         run: |
-          # Extract base version from [workspace.package] in Cargo.toml.
-          base=$(awk '
-            /^\[workspace.package\]/ { in_wp = 1; next }
-            /^\[/ { in_wp = 0 }
-            in_wp && /^version = / {
-              gsub(/version = "/, "")
-              gsub(/"/, "")
-              print
-              exit
-            }
-          ' Cargo.toml)
-          if [ -z "$base" ]; then
-            echo "::error::could not extract workspace version from Cargo.toml"
+          current=$(jq -r '.version' plugin/.claude-plugin/plugin.json)
+          echo "Current plugin version: $current"
+          # Plain X.Y.Z only — fail loudly if the value carries a suffix
+          # we don't expect.
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::plugin.json version '$current' is not plain semver X.Y.Z; auto-bump refuses to guess."
             exit 1
           fi
-          sha=$(git rev-parse --short HEAD)
-          new_ver="${base}+sha.${sha}"
-          echo "Computed plugin version: $new_ver"
-          echo "new_version=$new_ver" >> "$GITHUB_OUTPUT"
+          IFS='.' read -r major minor patch <<< "$current"
+          new_version="${major}.${minor}.$((patch + 1))"
+          echo "Next version: $new_version"
+          echo "new=$new_version" >> "$GITHUB_OUTPUT"
 
-      - name: Update plugin.json
+      - name: Rewrite all three version fields
+        if: steps.manual.outputs.skip == 'false'
         run: |
-          jq --arg v "${{ steps.ver.outputs.new_version }}" '.version = $v' \
-            plugin/.claude-plugin/plugin.json > plugin/.claude-plugin/plugin.json.tmp
+          new="${{ steps.ver.outputs.new }}"
+          # plugin.json (jq preserves formatting reasonably well)
+          jq --arg v "$new" '.version = $v' plugin/.claude-plugin/plugin.json > plugin/.claude-plugin/plugin.json.tmp
           mv plugin/.claude-plugin/plugin.json.tmp plugin/.claude-plugin/plugin.json
+          # crates/app/tauri.conf.json
+          jq --arg v "$new" '.version = $v' crates/app/tauri.conf.json > crates/app/tauri.conf.json.tmp
+          mv crates/app/tauri.conf.json.tmp crates/app/tauri.conf.json
+          # Cargo.toml — only the [workspace.package].version line. Use
+          # an awk in-place rewrite scoped to the [workspace.package]
+          # section so we don't accidentally touch any other version key.
+          awk -v new="$new" '
+            /^\[workspace.package\]/ { in_wp = 1; print; next }
+            /^\[/ { in_wp = 0 }
+            in_wp && /^version = / {
+              print "version = \"" new "\""
+              next
+            }
+            { print }
+          ' Cargo.toml > Cargo.toml.tmp
+          mv Cargo.toml.tmp Cargo.toml
 
-      - name: Commit and push (if changed)
+      - name: Commit and push
+        if: steps.manual.outputs.skip == 'false'
         run: |
-          if git diff --quiet plugin/.claude-plugin/plugin.json; then
-            echo "Plugin version already up-to-date for $(git rev-parse --short HEAD); nothing to commit."
+          if git diff --quiet; then
+            echo "Nothing to commit — files are already at the target version."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add plugin/.claude-plugin/plugin.json
-          git commit -m "chore(plugin): bump version to ${{ steps.ver.outputs.new_version }}"
+          git add Cargo.toml plugin/.claude-plugin/plugin.json crates/app/tauri.conf.json
+          git commit -m "chore: bump version to ${{ steps.ver.outputs.new }}"
           git push

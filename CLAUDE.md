@@ -84,15 +84,16 @@ bash scripts/smoke-test.sh                              # same, for macOS
 
 ## Plugin versioning
 
-Two version fields exist in this repo:
+Three version fields are kept in sync:
 
-- `Cargo.toml` `[workspace.package].version` — the tray-app version, bumped manually by humans (typically on releases).
-- `plugin/.claude-plugin/plugin.json` `version` — the Claude Code plugin version users see in `claude plugin list`.
+- `Cargo.toml` `[workspace.package].version` — the tray-app version.
+- `plugin/.claude-plugin/plugin.json` `version` — the Claude Code plugin version users see in `claude plugin list`. Claude Code only delivers updates when this field changes.
+- `crates/app/tauri.conf.json` `version` — embedded in the MSI / NSIS / DMG bundle filename and metadata.
 
-Rules:
-- When you bump `Cargo.toml` `[workspace.package].version`, **also bump `plugin/.claude-plugin/plugin.json` `version`** to the same string (no `+sha.…` suffix). The `crates/core/tests/plugin_version_sync.rs` test fails the workspace build if the bases don't match.
-- After your push to `main` is merged, `.github/workflows/auto-version-bump.yml` rewrites `plugin.json` `version` to `<workspace-version>+sha.<short-sha>` and commits it. This way every commit on `main` produces a new plugin version that `claude plugin update` will pick up, and the SHA is visible to users via `claude plugin list`.
-- Don't manually add a `+sha.…` suffix yourself — CI manages it. Just keep the bases in sync.
+How the bumps work:
+- **Auto-bump (CI, every push to main).** `.github/workflows/auto-version-bump.yml` increments the patch number across all three files (`0.2.1 → 0.2.2 → 0.2.3 …`) and commits the change. This is what makes `claude plugin update` always pick up the latest hooks. Plain semver, no SHA suffix.
+- **Manual bump (humans, on releases).** When you bump major or minor (`0.2.x → 0.3.0` or `0.x → 1.0.0`), edit all three files in the same commit. The auto-bump workflow detects that the push already touched a version file and skips itself, so your `0.3.0` doesn't get bounced to `0.3.1` immediately. The next normal push (no version-file edits) resumes auto-bumps from your new base.
+- The `crates/core/tests/plugin_version_sync.rs` test fails the build if `Cargo.toml`'s and `plugin.json`'s versions disagree.
 
 ## Don't edit
 
