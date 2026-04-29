@@ -20,9 +20,7 @@ fn main() {
         run_sanitize_and_exit();
     }
 
-    tracing_subscriber::fmt()
-        .with_env_filter("claude_pending_board=info")
-        .init();
+    init_tracing();
 
     let shared_state: SharedState = Arc::new(Mutex::new(AppState::new()));
 
@@ -157,6 +155,44 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Configure `tracing` to write to `~/.claude/pending/logs/app.log` instead
+/// of stderr. macOS .app bundles launched from Finder / login items have
+/// closed or broken stderr, so the default fmt subscriber's first write
+/// triggers `__eprint`'s `failed printing to stderr` panic — which aborts
+/// the process. We saw this in production via a SIGABRT whose faulting
+/// frame was `tracing_subscriber::fmt::Subscriber::event` →
+/// `tracing_core::event::Event::dispatch` →
+/// `commands::open_settings_window`. Writing to a file removes the stderr
+/// dependency entirely. If the file can't be opened (read-only HOME, quota,
+/// etc.) fall back to `io::sink` rather than re-introducing the panicking
+/// stderr writer.
+fn init_tracing() {
+    use std::sync::Mutex;
+    use tracing_subscriber::EnvFilter;
+
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("claude_pending_board=info"));
+
+    let log_file = dirs_next::home_dir().and_then(|home| {
+        let dir = home.join(".claude/pending/logs");
+        std::fs::create_dir_all(&dir).ok()?;
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join("app.log"))
+            .ok()
+    });
+
+    let builder = tracing_subscriber::fmt()
+        .with_env_filter(env_filter)
+        .with_ansi(false);
+
+    match log_file {
+        Some(f) => builder.with_writer(Mutex::new(f)).init(),
+        None => builder.with_writer(std::io::sink).init(),
+    }
 }
 
 fn run_sanitize_and_exit() -> ! {
