@@ -146,6 +146,14 @@ The system SHALL automatically show the HUD when the first pending entry arrives
 - **AND** if no `add` op arrives before the timer expires, the HUD SHALL be hidden
 - **AND** if an `add` op arrives during the grace, the timer SHALL be cancelled and the HUD SHALL remain visible
 
+#### Scenario: Manual open to an empty board auto-hides after grace period
+
+- **WHEN** the user opens the HUD via the tray icon or tray menu while the board is empty (0 entries)
+- **THEN** the `VisibilityController` SHALL show the HUD with the empty "All caught up" state
+- **AND** SHALL start the same configurable grace timer used by the entries-cleared path
+- **AND** if no `add` op arrives before the timer expires, the HUD SHALL be hidden
+- **AND** if an `add` op arrives during the grace, the timer SHALL be cancelled and the HUD SHALL remain visible
+
 #### Scenario: Additional adds while shown do not re-animate
 
 - **WHEN** the HUD is already `Shown` and a new `add` op arrives (count goes from 3 to 4)

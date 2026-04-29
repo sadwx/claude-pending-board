@@ -42,7 +42,14 @@ pub enum VisibilityEvent {
     ManualDismiss {
         reminding_override: Option<bool>,
     },
-    ManualOpen,
+    /// User explicitly opened the HUD (tray click, tray menu, etc).
+    ///
+    /// Carries the current board count so the FSM can start a grace timer
+    /// when the user opens to an empty board — otherwise the HUD would
+    /// stay up indefinitely showing "All caught up".
+    ManualOpen {
+        board_count: usize,
+    },
     Tick,
     /// The dismiss confirmation panel just opened in the HUD. The user is
     /// actively interacting — cancel any pending auto-hide grace deadline so
@@ -101,10 +108,13 @@ impl VisibilityController {
                     VisibilityAction::None
                 }
             }
-            (VisibilityState::Hidden, VisibilityEvent::ManualOpen) => {
-                self.state = VisibilityState::Shown {
-                    grace_deadline: None,
+            (VisibilityState::Hidden, VisibilityEvent::ManualOpen { board_count }) => {
+                let grace_deadline = if board_count == 0 {
+                    Some(now + Duration::seconds(self.config.auto_hide_grace_secs as i64))
+                } else {
+                    None
                 };
+                self.state = VisibilityState::Shown { grace_deadline };
                 VisibilityAction::ShowHud
             }
             (VisibilityState::Hidden, _) => VisibilityAction::None,
@@ -148,7 +158,9 @@ impl VisibilityController {
                 }
                 VisibilityAction::None
             }
-            (VisibilityState::Shown { .. }, VisibilityEvent::ManualOpen) => VisibilityAction::None,
+            (VisibilityState::Shown { .. }, VisibilityEvent::ManualOpen { .. }) => {
+                VisibilityAction::None
+            }
             (VisibilityState::Shown { grace_deadline }, VisibilityEvent::DismissPanelOpened) => {
                 // User is mid-interaction. Cancel any pending grace timer
                 // so the HUD doesn't vanish before they commit.
@@ -168,10 +180,16 @@ impl VisibilityController {
                 VisibilityState::CooldownHidden { .. },
                 VisibilityEvent::EntryRemoved { board_count },
             ) => VisibilityAction::UpdateBadge { count: board_count },
-            (VisibilityState::CooldownHidden { .. }, VisibilityEvent::ManualOpen) => {
-                self.state = VisibilityState::Shown {
-                    grace_deadline: None,
+            (
+                VisibilityState::CooldownHidden { .. },
+                VisibilityEvent::ManualOpen { board_count },
+            ) => {
+                let grace_deadline = if board_count == 0 {
+                    Some(now + Duration::seconds(self.config.auto_hide_grace_secs as i64))
+                } else {
+                    None
                 };
+                self.state = VisibilityState::Shown { grace_deadline };
                 VisibilityAction::ShowHud
             }
             (
@@ -421,9 +439,60 @@ mod tests {
         ctrl.handle(VisibilityEvent::ManualDismiss {
             reminding_override: None,
         });
-        let action = ctrl.handle(VisibilityEvent::ManualOpen);
+        let action = ctrl.handle(VisibilityEvent::ManualOpen { board_count: 1 });
         assert_eq!(action, VisibilityAction::ShowHud);
-        assert!(matches!(ctrl.state(), VisibilityState::Shown { .. }));
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: None
+            }
+        ));
+    }
+
+    #[test]
+    fn test_manual_open_to_empty_board_starts_grace_timer() {
+        // Opening the HUD via the tray to an empty board should display
+        // "All caught up" briefly and then auto-hide via the same grace
+        // timer the EntryRemoved → 0 path uses, so the HUD doesn't sit
+        // open indefinitely.
+        let clock = FakeClock::new(t0());
+        let mut ctrl = VisibilityController::new(clock.clone(), default_config());
+        let action = ctrl.handle(VisibilityEvent::ManualOpen { board_count: 0 });
+        assert_eq!(action, VisibilityAction::ShowHud);
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: Some(_)
+            }
+        ));
+
+        // Tick after the grace window hides the HUD.
+        clock.advance(Duration::seconds(
+            default_config().auto_hide_grace_secs as i64 + 1,
+        ));
+        let action = ctrl.handle(VisibilityEvent::Tick);
+        assert_eq!(action, VisibilityAction::HideHud);
+        assert_eq!(*ctrl.state(), VisibilityState::Hidden);
+    }
+
+    #[test]
+    fn test_manual_open_to_empty_board_from_cooldown_starts_grace_timer() {
+        let clock = FakeClock::new(t0());
+        let mut ctrl = VisibilityController::new(clock, default_config());
+        ctrl.handle(VisibilityEvent::EntryAdded { board_count: 1 });
+        ctrl.handle(VisibilityEvent::ManualDismiss {
+            reminding_override: None,
+        });
+        ctrl.handle(VisibilityEvent::EntryRemoved { board_count: 0 });
+
+        let action = ctrl.handle(VisibilityEvent::ManualOpen { board_count: 0 });
+        assert_eq!(action, VisibilityAction::ShowHud);
+        assert!(matches!(
+            ctrl.state(),
+            VisibilityState::Shown {
+                grace_deadline: Some(_)
+            }
+        ));
     }
 
     #[test]
