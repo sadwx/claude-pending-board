@@ -214,6 +214,7 @@ mod tests {
             message: "m".to_string(),
             wsl_distro: None,
             wezterm_pane_id: None,
+            tty: None,
         };
         let line = serde_json::to_string(&op).unwrap();
         assert!(
@@ -224,6 +225,11 @@ mod tests {
         assert!(
             !line.contains("wezterm_pane_id"),
             "wezterm_pane_id field should be omitted when None: {}",
+            line
+        );
+        assert!(
+            !line.contains("\"tty\""),
+            "tty field should be omitted when None: {}",
             line
         );
     }

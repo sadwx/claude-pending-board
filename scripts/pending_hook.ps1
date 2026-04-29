@@ -3,6 +3,17 @@
 # Appends ops to ~/.claude/pending/board.jsonl.
 # MUST always exit 0 — never block Claude Code.
 
+# Belt-and-suspenders: Claude Code 2.1.x ignores the `platform` field on
+# hook entries, so this script may be invoked on macOS / Linux even when
+# the manifest tags it `platform: "windows"`. Bail out silently — the bash
+# hook handles non-Windows. Only honored on PowerShell 7+ where $IsWindows
+# is automatic; older Windows PowerShell doesn't define it (treated as
+# falsy) but only ships on Windows anyway, so the test still does the
+# right thing.
+if (($null -ne $IsWindows) -and (-not $IsWindows)) {
+    exit 0
+}
+
 try {
     # Read JSON payload from stdin
     $rawInput = $input | Out-String
@@ -121,6 +132,21 @@ try {
                 ts         = $ts
                 session_id = $sessionId
                 reason     = "session_ended"
+            } | ConvertTo-Json -Compress
+
+            Add-Content -Path $boardFile -Value $op -Encoding UTF8
+        }
+
+        "PermissionDenied" {
+            # Fires when a permission prompt is denied — including the user
+            # pressing ESC to dismiss. The original Notification op is
+            # fire-and-forget, so without this the HUD entry would sit
+            # there until Stop / UserPromptSubmit / SessionEnd fired.
+            $op = @{
+                op         = "clear"
+                ts         = $ts
+                session_id = $sessionId
+                reason     = "permission_denied"
             } | ConvertTo-Json -Compress
 
             Add-Content -Path $boardFile -Value $op -Encoding UTF8

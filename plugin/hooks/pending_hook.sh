@@ -5,6 +5,15 @@
 
 set -o pipefail
 
+# Belt-and-suspenders: Claude Code 2.1.x ignores the `platform` field on
+# hook entries, so this script may be invoked on Windows even though the
+# manifest tags it `platform: "darwin"` / `"linux"`. Bail silently — the
+# pwsh hook handles Windows.
+case "$(uname -s 2>/dev/null)" in
+    Linux|Darwin) ;;
+    *) exit 0 ;;
+esac
+
 BOARD_DIR="$HOME/.claude/pending"
 BOARD_FILE="$BOARD_DIR/board.jsonl"
 LOG_DIR="$BOARD_DIR/logs"
@@ -66,7 +75,6 @@ except:
 
     local ts
     ts=$(date -u '+%Y-%m-%dT%H:%M:%S.000Z')
-    local claude_pid=$$
 
     case "$event_name" in
         Notification)
@@ -78,9 +86,20 @@ except:
             message="${message:-}"
             transcript_path="${transcript_path:-}"
 
-            # Walk process tree to find terminal PID
+            # Walk the ancestor chain to find both the claude CLI's PID
+            # and the terminal's PID in one pass.
+            #
+            # Why we can't just use $$ or $PPID:
+            #   $$    is this bash subshell — exits the moment the script
+            #         returns, so the reaper marks the entry pid_dead within
+            #         seconds and click-to-focus falls into spawn_resume.
+            #   $PPID is /bin/zsh on macOS — Claude Code wraps hook commands
+            #         in `zsh -c "..."`, which is also short-lived.
+            # The actual `claude` CLI process is the grandparent (or further);
+            # find it by walking up and matching on process name.
+            local claude_pid=""
             local terminal_pid="null"
-            local current_pid=$claude_pid
+            local current_pid=$$
             for _ in $(seq 1 20); do
                 local ppid_val
                 ppid_val=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
@@ -92,6 +111,9 @@ except:
                 fi
 
                 case "$proc_name" in
+                    claude)
+                        [ -z "$claude_pid" ] && claude_pid=$current_pid
+                        ;;
                     wezterm-gui|wezterm|iTerm2)
                         terminal_pid=$current_pid
                         break
@@ -100,6 +122,12 @@ except:
 
                 current_pid=$ppid_val
             done
+
+            # Fallback if the walk didn't find a process named "claude"
+            # (e.g. node-based npm install where the process is "node").
+            # $PPID is wrong but better than $$ — it's at least a real
+            # ancestor.
+            [ -z "$claude_pid" ] && claude_pid=$PPID
 
             # Escape message for JSON (basic: replace backslash, double-quote, newlines)
             local escaped_message
@@ -127,8 +155,19 @@ except:
                 wezterm_pane_field=$(printf ',"wezterm_pane_id":"%s"' "$WEZTERM_PANE")
             fi
 
-            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"%s%s}\n' \
-                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" "$wsl_distro_field" "$wezterm_pane_field" \
+            # Capture claude's controlling tty (e.g. ttys003). The PTY is
+            # owned by the terminal session (iTerm2 tab) and outlives the
+            # claude process, so click-to-focus on a Stale entry can still
+            # land on the right tab by matching `tty of session` in iTerm2.
+            local tty_field=""
+            local claude_tty
+            claude_tty=$(ps -o tty= -p "$claude_pid" 2>/dev/null | tr -d ' ')
+            if [ -n "$claude_tty" ] && [ "$claude_tty" != "??" ]; then
+                tty_field=$(printf ',"tty":"%s"' "$claude_tty")
+            fi
+
+            printf '{"op":"add","ts":"%s","session_id":"%s","cwd":"%s","claude_pid":%d,"terminal_pid":%s,"transcript_path":"%s","notification_type":"%s","message":"%s"%s%s%s}\n' \
+                "$ts" "$session_id" "$cwd" "$claude_pid" "$terminal_pid" "$transcript_path" "$notification_type" "$escaped_message" "$wsl_distro_field" "$wezterm_pane_field" "$tty_field" \
                 >> "$BOARD_FILE"
             ;;
 
@@ -151,6 +190,16 @@ except:
             # already covers the post-reply path, but it does NOT fire on
             # `/clear` — SessionEnd is the only signal there.
             printf '{"op":"clear","ts":"%s","session_id":"%s","reason":"session_ended"}\n' \
+                "$ts" "$session_id" \
+                >> "$BOARD_FILE"
+            ;;
+
+        PermissionDenied)
+            # Fires when a permission prompt is denied — including the user
+            # pressing ESC to dismiss. The original Notification op is
+            # fire-and-forget, so without this the HUD entry would sit
+            # there until Stop / UserPromptSubmit / SessionEnd fired.
+            printf '{"op":"clear","ts":"%s","session_id":"%s","reason":"permission_denied"}\n' \
                 "$ts" "$session_id" \
                 >> "$BOARD_FILE"
             ;;

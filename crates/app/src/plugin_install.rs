@@ -8,6 +8,7 @@
 //! the MSI's SYSTEM context) because we shell out from the already-running
 //! tray process.
 
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 // The CLI's `plugin marketplace add` accepts owner/repo, a full URL, or a
@@ -16,6 +17,18 @@ use std::process::{Command, Stdio};
 const MARKETPLACE: &str = "sadwx/claude-pending-board";
 const PLUGIN_REF: &str = "claude-pending-board@claude-pending-board";
 const PLUGIN_NAME: &str = "claude-pending-board";
+
+/// `process.platform`-style identifier for the current OS as used in the
+/// plugin's `plugin.json` `platform` annotations.
+fn current_platform() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "darwin"
+    } else {
+        "linux"
+    }
+}
 
 #[derive(Debug, serde::Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -68,7 +81,91 @@ pub fn install() -> Result<(), String> {
         return Err(format!("claude plugin install failed: {}", stderr.trim()));
     }
 
+    // Strip OS-irrelevant hook entries from the just-installed plugin.json.
+    // Claude Code 2.1.x ignores the `platform` field on hook entries (it's
+    // only honored under `mcp_config.platform_overrides`), so without this
+    // post-install step the user sees pwsh/bash hooks for *every* OS in
+    // `/hooks` and Claude Code attempts to spawn each of them — pwsh
+    // ENOENT's on macOS/Linux, bash ENOENT's on plain cmd.exe Windows.
+    if let Err(e) = sanitize_installed_plugin_json() {
+        // Non-fatal: install succeeded, the irrelevant entries just won't
+        // be stripped. Log and move on.
+        tracing::warn!(error = %e, "post-install plugin.json sanitize failed");
+    }
+
     Ok(())
+}
+
+/// Find the on-disk plugin.json that Claude Code loads from
+/// (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/.claude-plugin/plugin.json`)
+/// and rewrite it to drop hook entries whose `platform` doesn't match the
+/// current OS.
+pub fn sanitize_installed_plugin_json() -> Result<(), String> {
+    let path = locate_installed_plugin_json()?;
+    let raw = std::fs::read_to_string(&path).map_err(|e| format!("read {path:?}: {e}"))?;
+    let mut value: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("parse {path:?}: {e}"))?;
+
+    let removed = strip_foreign_platform_hooks(&mut value, current_platform());
+    if removed == 0 {
+        return Ok(());
+    }
+
+    let pretty =
+        serde_json::to_string_pretty(&value).map_err(|e| format!("serialize plugin.json: {e}"))?;
+    std::fs::write(&path, pretty).map_err(|e| format!("write {path:?}: {e}"))?;
+    tracing::info!(removed, ?path, "stripped foreign-platform hook entries");
+    Ok(())
+}
+
+fn locate_installed_plugin_json() -> Result<PathBuf, String> {
+    let home = dirs_next::home_dir().ok_or_else(|| "no home dir".to_string())?;
+    let base = home
+        .join(".claude")
+        .join("plugins")
+        .join("cache")
+        .join(PLUGIN_NAME)
+        .join(PLUGIN_NAME);
+    let entries = std::fs::read_dir(&base).map_err(|e| format!("read {base:?}: {e}"))?;
+
+    // Pick the most-recently-modified version directory. Claude Code keeps
+    // multiple versions side-by-side after upgrades; the newest one is the
+    // one in use.
+    let newest = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .max_by_key(|e| e.metadata().and_then(|m| m.modified()).ok())
+        .ok_or_else(|| format!("no version dirs under {base:?}"))?;
+
+    Ok(newest.path().join(".claude-plugin").join("plugin.json"))
+}
+
+/// Walks the parsed plugin.json and removes any element of any
+/// `hooks.<event>[].hooks[]` array whose `platform` field is set and does
+/// NOT equal `keep`. Returns the count of removed entries.
+fn strip_foreign_platform_hooks(value: &mut serde_json::Value, keep: &str) -> usize {
+    let mut removed = 0;
+    let Some(hooks) = value.get_mut("hooks").and_then(|h| h.as_object_mut()) else {
+        return 0;
+    };
+    for (_event, group) in hooks.iter_mut() {
+        let Some(group_arr) = group.as_array_mut() else {
+            continue;
+        };
+        for entry in group_arr.iter_mut() {
+            let Some(inner) = entry.get_mut("hooks").and_then(|h| h.as_array_mut()) else {
+                continue;
+            };
+            inner.retain(|h| match h.get("platform").and_then(|p| p.as_str()) {
+                Some(p) if p != keep => {
+                    removed += 1;
+                    false
+                }
+                _ => true,
+            });
+        }
+    }
+    removed
 }
 
 fn run_claude(args: &[&str]) -> Option<std::process::Output> {
@@ -90,4 +187,87 @@ fn run_claude(args: &[&str]) -> Option<std::process::Output> {
 
 fn cli_missing_msg() -> String {
     "`claude` CLI not found in PATH. Install Claude Code first, then try again.".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn strip_keeps_only_matching_platform() {
+        let mut v = json!({
+            "hooks": {
+                "Notification": [{
+                    "matcher": "",
+                    "hooks": [
+                        {"type": "command", "command": "pwsh ...", "platform": "windows"},
+                        {"type": "command", "command": "bash ...", "platform": "darwin"},
+                        {"type": "command", "command": "bash ...", "platform": "linux"}
+                    ]
+                }]
+            }
+        });
+        let n = strip_foreign_platform_hooks(&mut v, "darwin");
+        assert_eq!(n, 2);
+        let inner = v["hooks"]["Notification"][0]["hooks"].as_array().unwrap();
+        assert_eq!(inner.len(), 1);
+        assert_eq!(inner[0]["platform"], "darwin");
+    }
+
+    #[test]
+    fn strip_leaves_unannotated_entries_alone() {
+        // Hooks without a `platform` field run on all OSes — must be kept.
+        let mut v = json!({
+            "hooks": {
+                "Stop": [{
+                    "matcher": "",
+                    "hooks": [
+                        {"type": "command", "command": "echo cross-platform"}
+                    ]
+                }]
+            }
+        });
+        let n = strip_foreign_platform_hooks(&mut v, "darwin");
+        assert_eq!(n, 0);
+        assert_eq!(v["hooks"]["Stop"][0]["hooks"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn strip_handles_no_hooks_section() {
+        let mut v = json!({"name": "test", "version": "1.0.0"});
+        assert_eq!(strip_foreign_platform_hooks(&mut v, "darwin"), 0);
+    }
+
+    #[test]
+    fn strip_walks_multiple_events() {
+        let mut v = json!({
+            "hooks": {
+                "Notification": [{
+                    "matcher": "",
+                    "hooks": [
+                        {"command": "a", "platform": "windows"},
+                        {"command": "b", "platform": "darwin"}
+                    ]
+                }],
+                "Stop": [{
+                    "matcher": "",
+                    "hooks": [
+                        {"command": "c", "platform": "linux"},
+                        {"command": "d", "platform": "darwin"}
+                    ]
+                }]
+            }
+        });
+        let n = strip_foreign_platform_hooks(&mut v, "darwin");
+        assert_eq!(n, 2);
+        assert_eq!(
+            v["hooks"]["Notification"][0]["hooks"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(v["hooks"]["Stop"][0]["hooks"].as_array().unwrap().len(), 1);
+    }
 }

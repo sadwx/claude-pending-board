@@ -184,6 +184,7 @@ mod tests {
             stale_since: None,
             wsl_distro: None,
             wezterm_pane_id: None,
+            tty: None,
         }
     }
 

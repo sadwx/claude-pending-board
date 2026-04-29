@@ -26,6 +26,7 @@ impl StateStore {
                 message,
                 wsl_distro,
                 wezterm_pane_id,
+                tty,
             } => {
                 self.entries.insert(
                     session_id.clone(),
@@ -42,6 +43,7 @@ impl StateStore {
                         stale_since: None,
                         wsl_distro,
                         wezterm_pane_id,
+                        tty,
                     },
                 );
                 true
@@ -153,6 +155,7 @@ mod tests {
             message: "test".to_string(),
             wsl_distro: None,
             wezterm_pane_id: None,
+            tty: None,
         }
     }
 
