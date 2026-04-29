@@ -49,7 +49,7 @@ Install the release artifact. Then run through:
 
 ## Release
 
-- [ ] Bump `version` in workspace `Cargo.toml`, `plugin/.claude-plugin/plugin.json`, `crates/app/tauri.conf.json`
+- [ ] Bump `version` in workspace `Cargo.toml`, `plugin/.claude-plugin/plugin.json`, `crates/app/tauri.conf.json` (use the same base string in all three; CI's `auto-version-bump` workflow appends `+sha.<short-sha>` to the plugin.json copy on the next push to main)
 - [ ] Update `CHANGELOG.md` (or release notes inline in the tag)
 - [ ] Tag the release: `git tag -a v0.1.0 -m "..."`
 - [ ] Push tag: `git push origin v0.1.0` — triggers `.github/workflows/release.yml`
