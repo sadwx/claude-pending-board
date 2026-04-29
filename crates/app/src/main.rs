@@ -13,6 +13,13 @@ use state::{AppState, SharedState};
 use std::sync::{Arc, Mutex};
 
 fn main() {
+    // CLI subcommand: run sanitize and exit without booting Tauri. Lets users
+    // who don't keep the tray app running keep the installed plugin.json
+    // tidy after `claude plugin install/update` (cron, launchd, manual).
+    if std::env::args().any(|a| a == "--sanitize-manifest") {
+        run_sanitize_and_exit();
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter("claude_pending_board=info")
         .init();
@@ -150,4 +157,21 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn run_sanitize_and_exit() -> ! {
+    match plugin_install::sanitize_installed_plugin_json() {
+        Ok(0) => {
+            eprintln!("plugin.json already clean — no foreign-platform entries.");
+            std::process::exit(0);
+        }
+        Ok(removed) => {
+            eprintln!("removed {removed} foreign-platform hook entries from plugin.json.");
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("sanitize failed: {e}");
+            std::process::exit(1);
+        }
+    }
 }
