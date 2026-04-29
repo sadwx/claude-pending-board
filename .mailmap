@@ -1,0 +1,11 @@
+# Canonicalize commit author identity. `git log`, `git shortlog -sn`, and
+# GitHub's contributor display all consult this file to fold author
+# variants into one canonical entry. The underlying commit objects are
+# unchanged — this only affects how identity is presented.
+#
+# Format: <canonical-name> <canonical-email> <historic-name> <historic-email>
+# (Lines without an old-name section match by email only.)
+
+sadwx <sadwx4017@gmail.com> simon.lin <simon.lin@idtechproducts.com>
+sadwx <sadwx4017@gmail.com> SimonLin <sadwx4017@gmail.com>
+sadwx <sadwx4017@gmail.com> simon.lin <sadwx4017@gmail.com>

@@ -86,8 +86,8 @@ The system SHALL resume a stale session in a new terminal tab by invoking `claud
 
 #### Scenario: Stale entry click on a WSL-origin session
 
-- **WHEN** the user clicks a stale entry with `wsl_distro = Some("Ubuntu-24.04")` and `cwd = "/home/simon/project"`
-- **THEN** the WezTerm adapter SHALL spawn a new tab with working directory `\\wsl$\Ubuntu-24.04\home\simon\project`
+- **WHEN** the user clicks a stale entry with `wsl_distro = Some("Ubuntu-24.04")` and `cwd = "/home/user/project"`
+- **THEN** the WezTerm adapter SHALL spawn a new tab with working directory `\\wsl$\Ubuntu-24.04\home\user\project`
 - **AND** the tab SHALL run `wsl.exe -d Ubuntu-24.04 -e claude --resume <session_id>` so the resumed Claude session lives inside the originating distro
 
 ## ADDED Requirements
