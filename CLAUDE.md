@@ -84,15 +84,12 @@ bash scripts/smoke-test.sh                              # same, for macOS
 
 ## Plugin versioning
 
-Two version fields exist in this repo:
+Two version fields exist in this repo and they must stay in lockstep:
 
-- `Cargo.toml` `[workspace.package].version` — the tray-app version, bumped manually by humans (typically on releases).
-- `plugin/.claude-plugin/plugin.json` `version` — the Claude Code plugin version users see in `claude plugin list`.
+- `Cargo.toml` `[workspace.package].version` — the tray-app version.
+- `plugin/.claude-plugin/plugin.json` `version` — the Claude Code plugin version users see in `claude plugin list`. Claude Code only delivers updates via `claude plugin update` when this field changes.
 
-Rules:
-- When you bump `Cargo.toml` `[workspace.package].version`, **also bump `plugin/.claude-plugin/plugin.json` `version`** to the same string (no `+sha.…` suffix). The `crates/core/tests/plugin_version_sync.rs` test fails the workspace build if the bases don't match.
-- After your push to `main` is merged, `.github/workflows/auto-version-bump.yml` rewrites `plugin.json` `version` to `<workspace-version>+sha.<short-sha>` and commits it. This way every commit on `main` produces a new plugin version that `claude plugin update` will pick up, and the SHA is visible to users via `claude plugin list`.
-- Don't manually add a `+sha.…` suffix yourself — CI manages it. Just keep the bases in sync.
+Rule: when you make a change that should reach existing plugin installs (anything touching `plugin/hooks/` or the manifest itself), bump **both** version fields in the same commit. Plain semver — no `+sha.…` suffix. The `crates/core/tests/plugin_version_sync.rs` test fails the workspace build if the two fields drift apart.
 
 ## Don't edit
 
