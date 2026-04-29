@@ -12,3 +12,9 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 sysinfo = { workspace = true }
 thiserror = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
