@@ -401,22 +401,34 @@ function showStaleWarning() {
   if (staleWarning) staleWarning.classList.remove("hidden");
 }
 
+function hideStaleWarning() {
+  if (staleWarning) staleWarning.classList.add("hidden");
+}
+
 if (staleWarningDismiss) {
-  staleWarningDismiss.addEventListener("click", function () {
-    if (staleWarning) staleWarning.classList.add("hidden");
+  staleWarningDismiss.addEventListener("click", async function () {
+    hideStaleWarning();
+    try {
+      await invoke("dismiss_wezterm_stale_warning");
+    } catch (e) {
+      console.error("dismiss_wezterm_stale_warning error:", e);
+    }
   });
 }
 
-// Backend may emit this event during boot; the listener might attach
-// after the emit, so we also poll once on init via take_wezterm_stale_warning.
+// Backend may emit during boot; the listener might attach after the
+// emit, so we also poll once on init via wezterm_stale_warning_active.
 listen("wezterm-stale-warning", showStaleWarning);
+// Backend's periodic check fires this when every captured stale-WezTerm
+// PID has exited — i.e. the user actually restarted WezTerm.
+listen("wezterm-stale-warning-cleared", hideStaleWarning);
 
 (async function () {
   try {
     const entries = await invoke("list_entries");
     await refreshHookStatus();
     renderEntries(entries);
-    const stale = await invoke("take_wezterm_stale_warning");
+    const stale = await invoke("wezterm_stale_warning_active");
     if (stale) showStaleWarning();
   } catch (e) {
     console.error("initial load error:", e);

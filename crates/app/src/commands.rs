@@ -116,15 +116,28 @@ pub fn dismiss_panel_opened(state: State<SharedState>) -> Result<(), String> {
     Ok(())
 }
 
-/// Returns the WezTerm-stale-WSLENV warning flag and clears it. Called by
-/// the HUD on init so the banner shows even if the backend's emit landed
-/// before the listener attached. One-shot: subsequent calls return false.
+/// Returns the current WezTerm-stale-WSLENV warning state without
+/// clearing it. The HUD calls this on init to know whether to render the
+/// banner (covering the case where the backend's emit landed before the
+/// listener attached). The flag persists until either every PID in
+/// `stale_wezterm_pids` exits (auto-dismiss in
+/// `wezterm_stale_check_loop`) or the user clicks the banner X
+/// (`dismiss_wezterm_stale_warning`).
 #[tauri::command]
-pub fn take_wezterm_stale_warning(state: State<SharedState>) -> bool {
+pub fn wezterm_stale_warning_active(state: State<SharedState>) -> bool {
+    let s = state.lock().unwrap();
+    s.wezterm_stale_warning
+}
+
+/// User clicked the banner X. Clears the warning so the banner stays
+/// hidden across HUD reopens, and discards the captured PID list so the
+/// check loop doesn't fight the manual dismiss.
+#[tauri::command]
+pub fn dismiss_wezterm_stale_warning(state: State<SharedState>) -> Result<(), String> {
     let mut s = state.lock().unwrap();
-    let was_set = s.wezterm_stale_warning;
     s.wezterm_stale_warning = false;
-    was_set
+    s.stale_wezterm_pids.clear();
+    Ok(())
 }
 
 #[tauri::command]

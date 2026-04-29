@@ -57,11 +57,20 @@ pub fn boot(app: &AppHandle, state: SharedState) {
         reaper_loop(app_for_reaper, state_for_reaper).await;
     });
 
-    let app_for_tick = app_handle;
+    let app_for_tick = app_handle.clone();
     let state_for_tick = state.clone();
     tauri::async_runtime::spawn(async move {
         visibility_tick_loop(app_for_tick, state_for_tick).await;
     });
+
+    #[cfg(target_os = "windows")]
+    {
+        let app_for_wezterm_check = app_handle;
+        let state_for_wezterm_check = state.clone();
+        tauri::async_runtime::spawn(async move {
+            wezterm_stale_check_loop(app_for_wezterm_check, state_for_wezterm_check).await;
+        });
+    }
 
     let state_for_cleanup = state;
     tauri::async_runtime::spawn(async move {
@@ -147,6 +156,47 @@ async fn visibility_tick_loop(app: AppHandle, state: SharedState) {
         };
 
         apply_visibility_action(&app, &action);
+    }
+}
+
+/// Polls every 5 s to see whether the WezTerm processes that were running
+/// when the WSLENV-stale warning fired have all exited. When they have,
+/// we clear the warning and emit `wezterm-stale-warning-cleared` so the
+/// HUD hides the banner without the user having to click the X.
+///
+/// Heuristic: catches the common case ("user restarted WezTerm") but
+/// not the launcher-with-stale-env case (e.g. CmdPal still holding old
+/// `WSLENV`) — for that the banner stays up because new wezterm-gui
+/// instances inherit the launcher's stale env. The user's manual
+/// dismiss covers the remainder.
+#[cfg(target_os = "windows")]
+async fn wezterm_stale_check_loop(app: AppHandle, state: SharedState) {
+    use crate::wsl_env_setup;
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        let pids = {
+            let s = state.lock().unwrap();
+            if !s.wezterm_stale_warning || s.stale_wezterm_pids.is_empty() {
+                continue;
+            }
+            s.stale_wezterm_pids.clone()
+        };
+
+        if wsl_env_setup::any_pid_alive(&pids) {
+            continue;
+        }
+
+        {
+            let mut s = state.lock().unwrap();
+            s.wezterm_stale_warning = false;
+            s.stale_wezterm_pids.clear();
+        }
+        tracing::info!(
+            ?pids,
+            "all stale wezterm-gui PIDs exited; auto-dismissing WSLENV warning"
+        );
+        let _ = app.emit("wezterm-stale-warning-cleared", ());
     }
 }
 

@@ -13,8 +13,15 @@ pub struct AppState {
     /// Set by the WSLENV setup pass when it rewrites HKCU and detects a
     /// running wezterm-gui — meaning that WezTerm is still using its old
     /// WSLENV and click-to-focus into WSL won't work until the user
-    /// restarts it. Consumed once by the HUD on init.
+    /// restarts it. The HUD reads this on init (without clearing) and
+    /// the periodic check loop clears it once every PID in
+    /// `stale_wezterm_pids` has exited.
     pub wezterm_stale_warning: bool,
+    /// PIDs of `wezterm-gui` processes captured at the moment we set
+    /// `wezterm_stale_warning`. The check loop polls these to detect when
+    /// the user has actually restarted WezTerm so the warning can
+    /// auto-dismiss.
+    pub stale_wezterm_pids: Vec<u32>,
 }
 
 pub type SharedState = Arc<Mutex<AppState>>;
@@ -32,6 +39,7 @@ impl AppState {
             config,
             adapter_registry,
             wezterm_stale_warning: false,
+            stale_wezterm_pids: Vec::new(),
         }
     }
 

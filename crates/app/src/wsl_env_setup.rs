@@ -63,12 +63,13 @@ pub fn ensure_wezterm_pane_in_wslenv() -> Status {
     }
 }
 
-/// True if at least one `wezterm-gui.exe` process is currently running.
+/// PIDs of every currently-running `wezterm-gui.exe` process.
 ///
-/// Used after a successful `Updated` to decide whether to surface a "restart
-/// WezTerm" warning: WezTerm captures its WSLENV at launch and never re-reads
-/// it, so a running instance has stale env after we updated HKCU.
-pub fn wezterm_gui_running() -> bool {
+/// Used after a successful `Updated` to (a) decide whether to surface the
+/// "restart WezTerm" warning (empty `Vec` → nothing to warn about) and
+/// (b) record which specific instances were stale so the periodic check
+/// loop can detect when they've all exited and auto-dismiss the banner.
+pub fn wezterm_gui_pids() -> Vec<u32> {
     use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
     let mut sys = System::new();
     sys.refresh_processes_specifics(
@@ -77,8 +78,32 @@ pub fn wezterm_gui_running() -> bool {
         ProcessRefreshKind::everything(),
     );
     sys.processes()
-        .values()
-        .any(|p| p.name().eq_ignore_ascii_case("wezterm-gui.exe"))
+        .iter()
+        .filter_map(|(pid, p)| {
+            if p.name().eq_ignore_ascii_case("wezterm-gui.exe") {
+                Some(pid.as_u32())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// True if any of the given PIDs is still alive in the process table. We
+/// don't re-check the process name — a recycled PID would be a false
+/// positive but the chance over a few minutes is negligible, and erring
+/// on "leave the warning up" is the conservative choice.
+pub fn any_pid_alive(pids: &[u32]) -> bool {
+    use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
+    let mut sys = System::new();
+    let lookup: Vec<Pid> = pids.iter().map(|p| Pid::from_u32(*p)).collect();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&lookup),
+        true,
+        ProcessRefreshKind::everything(),
+    );
+    pids.iter()
+        .any(|p| sys.process(Pid::from_u32(*p)).is_some())
 }
 
 fn wsl_detected() -> bool {

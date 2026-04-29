@@ -103,19 +103,27 @@ fn main() {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn_blocking(move || {
                     let status = wsl_env_setup::ensure_wezterm_pane_in_wslenv();
-                    if status == wsl_env_setup::Status::Updated
-                        && wsl_env_setup::wezterm_gui_running()
+                    if status != wsl_env_setup::Status::Updated {
+                        return;
+                    }
+                    let pids = wsl_env_setup::wezterm_gui_pids();
+                    if pids.is_empty() {
+                        return;
+                    }
+                    tracing::warn!(
+                        ?pids,
+                        "WSLENV updated while wezterm-gui is running — restart WezTerm \
+                         so WSL panes pick up WEZTERM_PANE/u; click-to-focus into WSL \
+                         will fall back to spawn-a-new-tab until then"
+                    );
                     {
-                        tracing::warn!(
-                            "WSLENV updated while wezterm-gui is running — restart WezTerm \
-                             so WSL panes pick up WEZTERM_PANE/u; click-to-focus into WSL \
-                             will fall back to spawn-a-new-tab until then"
-                        );
-                        warning_state.lock().unwrap().wezterm_stale_warning = true;
-                        let _ = app_handle.emit("wezterm-stale-warning", ());
-                        if let Some(window) = app_handle.get_webview_window("hud") {
-                            crate::hud_show::show_without_activation(&window);
-                        }
+                        let mut s = warning_state.lock().unwrap();
+                        s.wezterm_stale_warning = true;
+                        s.stale_wezterm_pids = pids;
+                    }
+                    let _ = app_handle.emit("wezterm-stale-warning", ());
+                    if let Some(window) = app_handle.get_webview_window("hud") {
+                        crate::hud_show::show_without_activation(&window);
                     }
                 });
             }
@@ -128,7 +136,8 @@ fn main() {
             commands::focus_entry,
             commands::dismiss_hud,
             commands::dismiss_panel_opened,
-            commands::take_wezterm_stale_warning,
+            commands::wezterm_stale_warning_active,
+            commands::dismiss_wezterm_stale_warning,
             commands::manual_open,
             commands::open_settings,
             commands::hide_settings,
