@@ -16,17 +16,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1 || exit 0",
             "platform": "windows"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "darwin"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "linux"
           }
         ]
@@ -38,17 +38,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1 || exit 0",
             "platform": "windows"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "darwin"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "linux"
           }
         ]
@@ -60,17 +60,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1 || exit 0",
             "platform": "windows"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "darwin"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "linux"
           }
         ]
@@ -82,17 +82,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1 || exit 0",
             "platform": "windows"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "darwin"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "linux"
           }
         ]
@@ -104,17 +104,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.ps1 || exit 0",
             "platform": "windows"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "darwin"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pending_hook.sh || exit 0",
             "platform": "linux"
           }
         ]
