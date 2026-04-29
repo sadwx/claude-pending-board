@@ -394,11 +394,30 @@ setupManualBtn.addEventListener("click", function () {
   setupManual.classList.toggle("hidden");
 });
 
+const staleWarning = document.getElementById("staleWarning");
+const staleWarningDismiss = document.getElementById("staleWarningDismiss");
+
+function showStaleWarning() {
+  if (staleWarning) staleWarning.classList.remove("hidden");
+}
+
+if (staleWarningDismiss) {
+  staleWarningDismiss.addEventListener("click", function () {
+    if (staleWarning) staleWarning.classList.add("hidden");
+  });
+}
+
+// Backend may emit this event during boot; the listener might attach
+// after the emit, so we also poll once on init via take_wezterm_stale_warning.
+listen("wezterm-stale-warning", showStaleWarning);
+
 (async function () {
   try {
     const entries = await invoke("list_entries");
     await refreshHookStatus();
     renderEntries(entries);
+    const stale = await invoke("take_wezterm_stale_warning");
+    if (stale) showStaleWarning();
   } catch (e) {
     console.error("initial load error:", e);
   }

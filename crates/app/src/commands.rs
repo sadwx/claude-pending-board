@@ -116,6 +116,17 @@ pub fn dismiss_panel_opened(state: State<SharedState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns the WezTerm-stale-WSLENV warning flag and clears it. Called by
+/// the HUD on init so the banner shows even if the backend's emit landed
+/// before the listener attached. One-shot: subsequent calls return false.
+#[tauri::command]
+pub fn take_wezterm_stale_warning(state: State<SharedState>) -> bool {
+    let mut s = state.lock().unwrap();
+    let was_set = s.wezterm_stale_warning;
+    s.wezterm_stale_warning = false;
+    was_set
+}
+
 #[tauri::command]
 pub fn dismiss_hud(
     app: AppHandle,

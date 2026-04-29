@@ -158,6 +158,17 @@ This avoids silently clobbering the machine-scope tokens at process launch — W
 - **AND** `HKCU\Environment\WSLENV` already includes the token `WEZTERM_PANE/u`
 - **THEN** the app SHALL make no changes and log at DEBUG level
 
+#### Scenario: WSLENV updated while WezTerm is already running
+
+- **WHEN** the tray app starts on Windows, WSL is detected
+- **AND** `HKCU\Environment\WSLENV` did not include `WEZTERM_PANE/u` and the app rewrote it
+- **AND** at least one `wezterm-gui.exe` process is running at the time of the write
+- **THEN** the app SHALL surface a one-shot warning to the HUD telling the user to restart WezTerm so its child shells pick up the new `WSLENV`
+- **AND** the HUD SHALL be shown if hidden, so the warning is visible without the user clicking the tray
+- **AND** the warning SHALL be dismissible by the user and SHALL NOT persist across app restarts (it represents the boot-time stale-env condition only)
+
+This addresses the practical reality that WezTerm reads `WSLENV` once at process launch and never refreshes — even though Windows broadcasts `WM_SETTINGCHANGE`, a long-running WezTerm keeps using the env it captured at startup. Without this warning, click-to-focus into WSL silently falls through to spawn-a-new-tab and the user has no signal that the fix is one restart away.
+
 #### Scenario: WSL not detected
 
 - **WHEN** the tray app starts and `wsl.exe` is missing from `PATH`, or `wsl.exe -l -q` exits non-zero, or returns no distros
