@@ -165,7 +165,10 @@ This avoids silently clobbering the machine-scope tokens at process launch — W
 - **AND** at least one `wezterm-gui.exe` process is running at the time of the write
 - **THEN** the app SHALL surface a one-shot warning to the HUD telling the user to restart WezTerm so its child shells pick up the new `WSLENV`
 - **AND** the HUD SHALL be shown if hidden, so the warning is visible without the user clicking the tray
-- **AND** the warning SHALL be dismissible by the user and SHALL NOT persist across app restarts (it represents the boot-time stale-env condition only)
+- **AND** the app SHALL record the PIDs of every running `wezterm-gui.exe` at the moment of the write
+- **AND** the warning SHALL auto-dismiss when every recorded PID has exited (the user has restarted WezTerm), without requiring user interaction
+- **AND** the warning SHALL also be dismissible by the user via a banner button, for the corner case where WezTerm was relaunched from a parent process with stale env (e.g. PowerToys Command Palette) so the recorded PIDs exit but new wezterm-gui inherits the same stale env
+- **AND** the warning SHALL NOT persist across app restarts (it represents the boot-time stale-env condition only)
 
 This addresses the practical reality that WezTerm reads `WSLENV` once at process launch and never refreshes — even though Windows broadcasts `WM_SETTINGCHANGE`, a long-running WezTerm keeps using the env it captured at startup. Without this warning, click-to-focus into WSL silently falls through to spawn-a-new-tab and the user has no signal that the fix is one restart away.
 
