@@ -1,9 +1,19 @@
 name: Release
 
+# Temporarily disabled: GitHub Actions billing block. Run manually via
+# the Actions tab (`workflow_dispatch`) when cutting a release, or
+# restore the tag-push trigger below when billing is sorted.
+#
+# on:
+#   push:
+#     tags:
+#       - "v*"
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name to release (e.g. v0.3.0)"
+        required: true
 
 jobs:
   build:
@@ -35,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: crates/app
-          tagName: ${{ github.ref_name }}
-          releaseName: "Claude Pending Board ${{ github.ref_name }}"
+          tagName: ${{ inputs.tag }}
+          releaseName: "Claude Pending Board ${{ inputs.tag }}"
           releaseBody: "See the release notes below and [docs/release-checklist.md](https://github.com/sadwx/claude-pending-board/blob/main/docs/release-checklist.md) for the manual verification steps."
           releaseDraft: true
           prerelease: true

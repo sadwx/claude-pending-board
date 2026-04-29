@@ -1,22 +1,28 @@
 name: CI
 
+# Temporarily disabled: GitHub Actions billing block. Run manually via
+# the Actions tab (`workflow_dispatch`) when you need a CI sweep, or
+# restore the push/pull_request triggers below when billing is sorted.
+#
+# on:
+#   push:
+#     branches: [main]
+#     paths-ignore:
+#       - "**/*.md"
+#       - "docs/**"
+#       - "openspec/**"
+#       - ".gitignore"
+#       - "LICENSE"
+#   pull_request:
+#     branches: [main]
+#     paths-ignore:
+#       - "**/*.md"
+#       - "docs/**"
+#       - "openspec/**"
+#       - ".gitignore"
+#       - "LICENSE"
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "openspec/**"
-      - ".gitignore"
-      - "LICENSE"
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "openspec/**"
-      - ".gitignore"
-      - "LICENSE"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
