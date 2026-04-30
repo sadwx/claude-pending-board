@@ -16,6 +16,11 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 dirs-next = "2"
 chrono = { workspace = true }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.61", features = [

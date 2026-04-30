@@ -3,6 +3,7 @@
 mod commands;
 mod hud_show;
 mod plugin_install;
+mod plugin_watch;
 mod services;
 mod state;
 mod tray;

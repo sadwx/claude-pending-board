@@ -460,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "claude-pending-board-adapters"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "claude-pending-board-core",
  "serde",
@@ -474,12 +474,14 @@ dependencies = [
 
 [[package]]
 name = "claude-pending-board-app"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "chrono",
  "claude-pending-board-adapters",
  "claude-pending-board-core",
  "dirs-next",
+ "notify",
+ "notify-debouncer-full",
  "objc2 0.5.2",
  "serde",
  "serde_json",
@@ -487,6 +489,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -496,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "claude-pending-board-core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "chrono",
  "dirs-next",

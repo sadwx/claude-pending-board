@@ -6,6 +6,7 @@ use claude_pending_board_core::reaper::{self, RealProcessTable, RealSessionFiles
 use claude_pending_board_core::types::{EntryState, Op};
 use claude_pending_board_core::visibility::{VisibilityAction, VisibilityEvent};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
 
@@ -42,6 +43,32 @@ pub fn boot(app: &AppHandle, state: SharedState) {
         }
         Err(e) => {
             tracing::error!(error = %e, "failed to start board watcher");
+        }
+    }
+
+    // Watch the plugin cache for marketplace install/update events. When a
+    // new version of our plugin lands (e.g. via `claude plugin update`
+    // while the tray app is already running), re-run sanitize so the
+    // duplicate per-OS hook entries get stripped without requiring an app
+    // restart. The boot-time sanitize earlier in setup() handles the
+    // already-installed case; this watcher closes the live-update gap.
+    let on_cache_change: crate::plugin_watch::OnChange =
+        Arc::new(
+            || match crate::plugin_install::sanitize_installed_plugin_json() {
+                Ok(0) => {}
+                Ok(n) => tracing::info!(
+                    removed = n,
+                    "auto-sanitize: stripped foreign-platform hook entries"
+                ),
+                Err(e) => tracing::warn!(error = %e, "auto-sanitize failed"),
+            },
+        );
+    match crate::plugin_watch::PluginCacheWatcher::start_default(on_cache_change) {
+        Ok(watcher) => {
+            std::mem::forget(watcher);
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to start plugin cache watcher");
         }
     }
 
