@@ -104,9 +104,13 @@ Changes apply immediately — no restart needed.
 
 ### `/hooks` shows pwsh entries on macOS/Linux (or bash entries on Windows)
 
-Claude Code 2.1.x ignores the `platform` field on hook entries, so the bundled `plugin.json` ships with one entry per OS for each event and Claude Code lists them all. The tray app strips foreign-platform entries from the installed `plugin.json` on every startup — but if you don't keep the tray app running, a fresh `claude plugin install` / auto-update will leave the foreign entries in place until next launch.
+Claude Code 2.1.x ignores the `platform` field on hook entries, so the bundled `plugin.json` ships with one entry per OS for each event and Claude Code lists them all. The tray app strips foreign-platform entries from the installed `plugin.json` automatically:
 
-If you want the cleanup without launching the app, run the binary with `--sanitize-manifest`:
+- once at app startup,
+- right after a tray-driven `[Install plugin]` click, and
+- on every filesystem change under `~/.claude/plugins/cache/` that touches the plugin (so `claude plugin update` and marketplace auto-updates clear up within ~2 s without an app restart).
+
+If you don't keep the tray app running, fresh installs will leave the foreign entries in place until you launch the app. To do the cleanup without launching the app, run the binary with `--sanitize-manifest`:
 
 ```bash
 claude-pending-board-app --sanitize-manifest        # macOS / Linux
