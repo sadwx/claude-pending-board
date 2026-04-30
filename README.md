@@ -32,7 +32,7 @@ Claude Code (multiple sessions)
                                  └─ TerminalAdapter (WezTerm / iTerm2)
 ```
 
-- **Floating HUD**: 380 × 440 pixel draggable, non-activating window that auto-shows on the first pending entry and auto-hides when the board goes empty.
+- **Floating HUD**: 380 × 240 pixel draggable, non-activating window that auto-shows on the first pending entry and auto-hides when the board goes empty. Shows up to 3 entries at a time; scrolls when more accumulate.
 - **Sorting**: permission > idle > stale, newest first within each group.
 - **Click to focus**: live entries jump to the owning terminal pane. Stale entries (e.g. after a reboot) spawn a fresh `claude --resume <session_id>` in a new tab.
 - **Dismiss with cooldown**: manually dismiss the window with a 5-second confirmation panel; configurable 15-minute cooldown; optional reminder when new items accumulate during the cooldown.

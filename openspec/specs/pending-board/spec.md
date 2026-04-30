@@ -119,7 +119,7 @@ The system SHALL present pending entries in a fixed-size floating window that do
 #### Scenario: HUD dimensions and chrome
 
 - **WHEN** the HUD is visible
-- **THEN** it SHALL be 380 × 440 pixels, non-resizable, draggable by its header bar, with rounded corners and a drop shadow
+- **THEN** it SHALL be 380 × 240 pixels (sized to show ~3 entry rows before scrolling), non-resizable, draggable by its header bar, with rounded corners and a drop shadow
 - **AND** the header SHALL contain a logo glyph, the title "Pending Board", a count badge, a settings gear, and a dismiss `×` button
 
 #### Scenario: List scrolls when overflowing

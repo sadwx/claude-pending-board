@@ -228,9 +228,9 @@ pub fn reset_hud_position(app: AppHandle, state: State<SharedState>) -> Result<(
     let size = monitor.size();
     let scale = monitor.scale_factor();
 
-    // HUD is 380x440 logical pixels. Margin + taskbar allowance at the bottom.
+    // HUD is 380x240 logical pixels. Margin + taskbar allowance at the bottom.
     let hud_w = (380.0 * scale) as i32;
-    let hud_h = (440.0 * scale) as i32;
+    let hud_h = (240.0 * scale) as i32;
     let margin_right = (16.0 * scale) as i32;
     let margin_bottom = (64.0 * scale) as i32;
 
