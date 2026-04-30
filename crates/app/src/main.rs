@@ -54,7 +54,7 @@ fn main() {
                 tauri::WebviewUrl::App("hud/index.html".into()),
             )
             .title("Claude Pending Board")
-            .inner_size(380.0, 440.0)
+            .inner_size(380.0, 240.0)
             .resizable(false)
             .decorations(false)
             .transparent(true)
