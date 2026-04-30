@@ -312,7 +312,8 @@ The system SHALL provide two equivalent installation paths for the hook scripts:
 
 - **WHEN** the user runs `claude plugin marketplace add sadwx/claude-pending-board` followed by `claude plugin install claude-pending-board@claude-pending-board` (or the equivalent slash commands inside Claude Code)
 - **THEN** the marketplace catalog at `.claude-plugin/marketplace.json` SHALL list `claude-pending-board` with `source = "./plugin"`
-- **AND** the plugin's `plugin.json` SHALL register the four hooks (`Notification`, `UserPromptSubmit`, `Stop`, `SessionEnd`) pointing to platform-appropriate scripts bundled inside the plugin
+- **AND** the plugin's `plugin.json` SHALL register the five hooks (`Notification`, `UserPromptSubmit`, `Stop`, `SessionEnd`, `PermissionDenied`) pointing to platform-appropriate scripts bundled inside the plugin, with one entry per supported platform (`windows`, `darwin`, `linux`) per event
+- **AND** every command line SHALL end with `|| exit 0` so a missing launcher (`pwsh` on Unix, `bash` on a bare Windows install) does not surface as a hook failure to Claude Code (workaround: Claude Code 2.1.x ignores the `platform` field on hook entries, so every entry runs on every OS)
 - **AND** no changes SHALL be made to the user's global `~/.claude/settings.json`
 
 #### Scenario: First-run setup card in HUD
@@ -331,8 +332,48 @@ The system SHALL provide two equivalent installation paths for the hook scripts:
 #### Scenario: Doctor diagnoses a broken install
 
 - **WHEN** the user runs `/pending-board doctor`
-- **THEN** the plugin SHALL verify that the three hooks are registered, that the script files exist and are executable, that `~/.claude/pending/board.jsonl` is writable, and that the configured terminal adapter binary is in `PATH`
+- **THEN** the plugin SHALL verify that the registered hooks exist, that the script files exist and are executable, that `~/.claude/pending/board.jsonl` is writable, and that the configured terminal adapter binary is in `PATH`
 - **AND** SHALL report any failed checks with remediation hints
+
+### Requirement: Manifest sanitization
+
+The tray app SHALL strip foreign-platform hook entries from the installed `plugin.json` so the user's `/hooks` listing only shows entries that can run on the current OS. The shipped `plugin.json` carries one entry per OS for each event because Claude Code 2.1.x ignores the `platform` field; this requirement keeps the runtime view tidy without depending on Claude Code honoring `platform`.
+
+#### Scenario: Sanitize after one-click install from the setup card
+
+- **WHEN** `install_plugin` succeeds via the setup card path
+- **THEN** the tray app SHALL rewrite `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/.claude-plugin/plugin.json` to remove every entry whose `platform` field is set and does not match the current OS (`windows`, `darwin`, or `linux`)
+- **AND** entries with no `platform` field SHALL be preserved unchanged
+- **AND** sanitize failure SHALL be logged at `warn` level and SHALL NOT fail the install
+
+#### Scenario: Sanitize on tray-app startup
+
+- **WHEN** the tray app boots
+- **THEN** the app SHALL run the same sanitize as a best-effort background task during `setup()`, so a Claude-Code-driven plugin auto-update that landed since the last app launch is cleaned up before the user opens `/hooks`
+
+#### Scenario: Sanitize on demand via CLI flag
+
+- **WHEN** the user invokes the binary as `claude-pending-board-app --sanitize-manifest`
+- **THEN** the binary SHALL run sanitize without booting Tauri, print `removed N foreign-platform hook entries from plugin.json.` (or `plugin.json already clean — no foreign-platform entries.` when N = 0) to stderr, and exit with status 0
+- **AND** SHALL exit with status 1 and a `sanitize failed: <reason>` message on error
+- **AND** the operation SHALL be idempotent: re-running on an already-clean manifest SHALL report `already clean`
+
+### Requirement: Application logging
+
+The tray app SHALL write its `tracing` log output to a file under `~/.claude/pending/logs/`, not to stderr.
+
+#### Scenario: App log is written to disk
+
+- **WHEN** the tray app boots
+- **THEN** the `tracing_subscriber` SHALL write events to `~/.claude/pending/logs/app.log` in append mode, creating the directory and file if missing
+
+#### Scenario: Log file open failure does not crash the app
+
+- **WHEN** opening `~/.claude/pending/logs/app.log` fails (read-only HOME, quota, etc.)
+- **THEN** the subscriber SHALL fall back to `io::sink` rather than the default stderr writer
+- **AND** the app SHALL continue to boot normally without log output
+
+> **Why a file rather than stderr:** macOS `.app` bundles launched from Finder or login items inherit a closed or otherwise broken stderr. The default fmt subscriber's first write triggers Rust's `failed printing to stderr` panic, which aborts the process. Writing to a file removes that dependency entirely.
 
 ### Requirement: Board file resilience
 
