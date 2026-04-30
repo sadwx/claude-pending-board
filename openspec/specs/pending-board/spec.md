@@ -1,6 +1,10 @@
 # pending-board
 
-This is the **working spec** at v0.1.2 — a snapshot of behaviors that are merged and shipped. The source change folder is archived at `openspec/changes/archive/add-claude-pending-board/`. Subsequent change proposals (e.g. `openspec/changes/add-wsl-support/`) describe deltas on top of this document.
+This is the **working spec** — a snapshot of behaviors that are merged and shipped. The source change folder is archived at `openspec/changes/archive/add-claude-pending-board/`. Subsequent change proposals (e.g. `openspec/changes/add-wsl-support/`, `openspec/changes/add-plugin-auto-sanitize/`) describe deltas on top of this document.
+
+## Purpose
+
+The pending-board capability surfaces every Claude Code session that is waiting on the user — permission prompts, idle prompts, and stale sessions whose owning process has died — in a single floating HUD across all projects on the host. It captures notifications via Claude Code hooks, persists them to `~/.claude/pending/board.jsonl`, renders them in a tray-app HUD, and provides one-click focus / resume routes back into the originating WezTerm or iTerm2 pane (including across the WSL/Windows boundary). It also keeps the installed plugin manifest tidy so `/hooks` only lists hook commands that can actually run on the current OS.
 
 ## Requirements
 
@@ -337,7 +341,7 @@ The system SHALL provide two equivalent installation paths for the hook scripts:
 
 ### Requirement: Manifest sanitization
 
-The tray app SHALL strip foreign-platform hook entries from the installed `plugin.json` so the user's `/hooks` listing only shows entries that can run on the current OS. The shipped `plugin.json` carries one entry per OS for each event because Claude Code 2.1.x ignores the `platform` field; this requirement keeps the runtime view tidy without depending on Claude Code honoring `platform`.
+The tray app SHALL strip foreign-platform hook entries from the installed `plugin.json` so the user's `/hooks` listing only shows entries that can run on the current OS. The shipped `plugin.json` carries one entry per OS for each event because Claude Code 2.1.x ignores the `platform` field; this requirement keeps the runtime view tidy without depending on Claude Code honoring `platform`. While the tray app is running, the sanitize SHALL also re-fire automatically whenever the plugin cache changes on disk, so `claude plugin update` (or marketplace auto-update) does not leave duplicate entries lingering until the next app reboot.
 
 #### Scenario: Sanitize after one-click install from the setup card
 
@@ -357,6 +361,14 @@ The tray app SHALL strip foreign-platform hook entries from the installed `plugi
 - **THEN** the binary SHALL run sanitize without booting Tauri, print `removed N foreign-platform hook entries from plugin.json.` (or `plugin.json already clean — no foreign-platform entries.` when N = 0) to stderr, and exit with status 0
 - **AND** SHALL exit with status 1 and a `sanitize failed: <reason>` message on error
 - **AND** the operation SHALL be idempotent: re-running on an already-clean manifest SHALL report `already clean`
+
+#### Scenario: Auto-sanitize on plugin cache change
+
+- **WHEN** the tray app is running and any filesystem event under `~/.claude/plugins/cache/` mentions a path component named `claude-pending-board` (typical of `claude plugin install` / `claude plugin update` / marketplace auto-update creating or replacing a version directory)
+- **THEN** the app SHALL coalesce the burst of events through a debounce window (1.5 s, chosen so a single install settles inside it but stale duplicates clear within ~2 s of the install completing)
+- **AND** SHALL run the sanitize routine once per debounced burst
+- **AND** filesystem events that touch other plugins' cache subdirectories SHALL NOT trigger a sanitize call
+- **AND** sanitize failure SHALL be logged at `warn` level only and SHALL NOT propagate further
 
 ### Requirement: Application logging
 
@@ -398,3 +410,4 @@ The system SHALL tolerate malformed lines, truncated writes, schema additions, a
 
 - **WHEN** the compaction routine runs (file > 5 MB or > 10 000 lines, or at startup)
 - **THEN** the new content SHALL be written to `board.jsonl.tmp` and renamed over `board.jsonl` in a single step
+
